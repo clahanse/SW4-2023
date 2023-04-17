@@ -3,13 +3,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
-import java.io.*;
-import java.io.IOException;
-import java.io.FileWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class SMLAScanner {
     private Scanner scanner;
@@ -18,14 +11,6 @@ public class SMLAScanner {
     public SMLAScanner(Scanner scanner) { // constructor
         this.scanner = scanner;
         this.tokenList = new ArrayList<>(); // list stores tokens
-    }
-
-    public void clearScanner() {
-        tokenList.clear();
-    }
-
-    public String printList() {
-        return tokenList.toString();
     }
 
     // MAIN FUNCTION SCANNING AND DIVIDING INPUT DATA INTO TOKENS
@@ -92,7 +77,7 @@ public class SMLAScanner {
                 }
             } else if (i == 2) {  // check NAME
                 val = nextToken;
-                typ = "letterordigit";
+                typ = "letter_letterordigit";
                 addUniqueToken(tokenList, new Token(typ, val, "")); // store token "NAME" into tokenList
                 i++;
                 // print to console to check
@@ -106,7 +91,7 @@ public class SMLAScanner {
                 System.out.println("3- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
             } else if (i == 4) {  // check "NUMBER"
                 val = nextToken;
-                typ = "integer";
+                typ = "n_integer";
                 addUniqueToken(tokenList, new Token(typ, val, "setup")); // store token "NUMBER" into tokenList
                 i++;
                 // print to console to check
@@ -149,8 +134,11 @@ public class SMLAScanner {
             } else if (i == 2) {  // check "SCHELLING, NUMBER, RANDOM"
                 val = nextToken;
                 if (isInteger(val)) {
-                    typ = "integer";
-                } else {
+                    typ = "n_integer";
+                }else if(val == "SCHELLING"|| val == "RANDOM"){
+                    typ = "typemoving";
+                }
+                else {
                     typ = "letterordigit";
                 }
                 addUniqueToken(tokenList, new Token(typ, val, "")); // store token into tokenList
@@ -186,14 +174,23 @@ public class SMLAScanner {
             Scanner lineScanner = new Scanner(line);
             int n = 1; // mark ratio command
             while (lineScanner.hasNext()) { // scan each token
+                if (!lineScanner.hasNext()) {
+                    throw new Exception("Missing name value for group");
+                }
                 String group = lineScanner.next(); // scan name
+                if (!lineScanner.hasNext()) {
+                    throw new Exception("Missing color value for group: " + group);
+                }
                 String color = lineScanner.next(); // scan color
+                if (!lineScanner.hasNext()) {
+                    throw new Exception("Missing ratio value for group: " + group);
+                }
                 String ratio = lineScanner.next(); // scan ratio
                 // Input group, color, and ratio strings in function ScanGroup to create and store tokens
                 ScanGroup(group, color, ratio, String.valueOf(n));
                 n++;
             }
-        }
+         }
     }
 
     // FUNCTION SCANS "RUN SIMULATION FOR (NUMBER|NO) TICKS"
@@ -228,7 +225,7 @@ public class SMLAScanner {
             } else if (i == 3) { // check "NUMBER TICKS/NO"
                 val = nextToken;
                 if (isInteger(val)) {
-                    typ = "integer";
+                    typ = "n_integer";
                 } else {
                     typ = "letterordigit";
                 }
@@ -252,11 +249,11 @@ public class SMLAScanner {
 
     // FUNCTION SCANS THE SIMPLE CALCULATION (+,-,*,/)
     public void scanCalculation(Scanner inputScanner, String token) throws Exception {
-        String val = String.valueOf(token);
+       String val = String.valueOf(token);
         String typ;
 
         if (val.contains("a") || val.contains("b") || val.contains("c")) {
-            typ = "letter";
+            typ = "calculation";
             addUniqueToken(tokenList, new Token(typ, val, "")); // store token "a|b|c" into tokenList
             // print to console to check
             System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
@@ -274,14 +271,13 @@ public class SMLAScanner {
             throw new Exception("Expected '=' but found " + assign);
         }
         while (inputScanner.hasNext()) { // scan each token
-
             String nextToken = inputScanner.next();
             val = nextToken;
             if (isInteger(val)) {
-                typ = "integer";
+                typ = "n_integer";
                 addUniqueToken(tokenList, new Token(typ, val, ""));  // store number into tokenList
                 // print to console to check
-                System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
+                System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
             } else if (val.contains("*") || val.contains("/") || val.contains("+") || val.contains("-")) {
                 if (val.contains("*") || val.contains("/")) {
                     typ = "multoperator";
@@ -289,14 +285,18 @@ public class SMLAScanner {
                 if (val.contains("+") || val.contains("-")) {
                     typ = "addoperator";
                 }
-                addUniqueToken(tokenList, new Token(typ, val, ""));  // store operator into tokenList
+                 addUniqueToken(tokenList, new Token(typ, val, ""));  // store operator into tokenList
 
                 // print to console to check
-                System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
+                System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
+              //  System.out.println("number of words" + "" + numWords);
+
             } else {
                 throw new Exception("Expected 'number' or 'operator' but found " + val);
             }
         }
+        addUniqueToken(tokenList, new Token(typ ="newline", val="", ""));
+        System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
     }
 
     // FUNCTION STORES GROUP OF THE TOKENS (NAME: COLOR: RATIO) INTO THE LIST
@@ -313,7 +313,7 @@ public class SMLAScanner {
         // print to console to check
         System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
         val = String.valueOf(ratio1);
-        typ = "integer";
+        typ = "n_integer";
         addUniqueToken(tokenList, new Token(typ, val, command)); // store token "ratio of group" into tokenList
         // print to console to check
         System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
@@ -396,23 +396,6 @@ public class SMLAScanner {
         }
     }
 
-    // FUNCTION WRITE TO FILE
-    public static void writeTokensToFile(SMLAScanner tokenList) {
-        
-   try {
-    Writer wr = new FileWriter("token.txt");
-    String str = tokenList.printList();
-    wr.write(str);
-    wr.close();
-   } catch (IOException ex) {
-    // Print messqage exception occurred as
-    // invalid. directory local path is passed
-    System.out.print("Invalid Path");
-   }
-
-    }
-
-
     // FUNCTION GETS "tokenList"
     public List<Token> getTokenList() {
         return tokenList;
@@ -429,8 +412,6 @@ public class SMLAScanner {
             System.out.println("\n Print Token from variables: ");
             if (input.equals("exit")) {
                 continueScanning = false;
-            } else if (input.equals("clear")) {
-                smlaScanner.clearScanner();
             } else {
                 smlaScanner.tokenizeInput(input);
                 System.out.println("\n Print Token from List: ");
@@ -441,8 +422,7 @@ public class SMLAScanner {
                 }
             }
         }
-        System.out.println(smlaScanner.printList());
-        writeTokensToFile(smlaScanner);
     }
-
 }
+
+
