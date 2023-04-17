@@ -3,6 +3,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
+import java.io.*;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class SMLAScanner {
     private Scanner scanner;
@@ -11,6 +18,14 @@ public class SMLAScanner {
     public SMLAScanner(Scanner scanner) { // constructor
         this.scanner = scanner;
         this.tokenList = new ArrayList<>(); // list stores tokens
+    }
+
+    public void clearScanner() {
+        tokenList.clear();
+    }
+
+    public String printList() {
+        return tokenList.toString();
     }
 
     // MAIN FUNCTION SCANNING AND DIVIDING INPUT DATA INTO TOKENS
@@ -381,6 +396,23 @@ public class SMLAScanner {
         }
     }
 
+    // FUNCTION WRITE TO FILE
+    public static void writeTokensToFile(SMLAScanner tokenList) {
+        
+   try {
+    Writer wr = new FileWriter("token.txt");
+    String str = tokenList.printList();
+    wr.write(str);
+    wr.close();
+   } catch (IOException ex) {
+    // Print messqage exception occurred as
+    // invalid. directory local path is passed
+    System.out.print("Invalid Path");
+   }
+
+    }
+
+
     // FUNCTION GETS "tokenList"
     public List<Token> getTokenList() {
         return tokenList;
@@ -397,6 +429,8 @@ public class SMLAScanner {
             System.out.println("\n Print Token from variables: ");
             if (input.equals("exit")) {
                 continueScanning = false;
+            } else if (input.equals("clear")) {
+                smlaScanner.clearScanner();
             } else {
                 smlaScanner.tokenizeInput(input);
                 System.out.println("\n Print Token from List: ");
@@ -407,7 +441,8 @@ public class SMLAScanner {
                 }
             }
         }
+        System.out.println(smlaScanner.printList());
+        writeTokensToFile(smlaScanner);
     }
+
 }
-
-
