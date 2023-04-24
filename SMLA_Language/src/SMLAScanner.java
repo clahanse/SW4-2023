@@ -1,4 +1,3 @@
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -13,313 +12,176 @@ public class SMLAScanner {
         this.tokenList = new ArrayList<>(); // list stores tokens
     }
 
+    public SMLAScanner() { // constructor
+    }
+
     // MAIN FUNCTION SCANNING AND DIVIDING INPUT DATA INTO TOKENS
     public void tokenizeInput(String input) throws Exception {
         Scanner inputScanner = new Scanner(input);  // scan input string
-        // split the input string into tokens based on whitespace
-        inputScanner.useDelimiter(Pattern.compile("\\s+"));
+        // split the input string into lines
+        inputScanner.useDelimiter(Pattern.compile("[\r\n]+"));
         String nextToken = ""; // store the next token
-        String typ = "";  // store token type
         String val = "";  // store token value
+        int i = 0;
+        while (inputScanner.hasNext()) { // process each line in the input string one by one
+            String line = inputScanner.next();
+            Scanner lineScanner = new Scanner(line);
+            lineScanner.useDelimiter(Pattern.compile("\\s+"));
 
-        while (inputScanner.hasNext()) {  // process each token in the input string one by one
-            String token = inputScanner.next();
-            if (token.equals("SETUP")) {
-                scanSetup(inputScanner, token); // scan "SETUP SIMULATION (NAME) WITH NUMBER GROUPS"
-            } else if (token.equals("WHERE")) {
-                while (inputScanner.hasNext()) { // scan each token
-                    nextToken = inputScanner.next();
-                    if (nextToken.equals("TYPE")) { // scan "WHERE TYPE IS SCHELLING"
-                        scanWhere(inputScanner, nextToken);
-                    } else if (nextToken.equals("VACANT")) {
-                        scanWhere(inputScanner, nextToken); // scan "WHERE VACANT IS NUMBER"
-                    } else if (nextToken.equals("GROUPS")) {
-                        scanWhereGroups(inputScanner, nextToken); // scan "WHERE GROUPS WITH (A: green: 20,...)"
-                    } else if (nextToken.equals("SIMILARITY")) {
-                        scanWhere(inputScanner, nextToken); // scan "WHERE SIMILARITY IS NUMBER"
-                    } else if (nextToken.equals("MOVING")) {
-                        scanWhere(inputScanner, nextToken); // scan "WHERE MOVING IS RANDOM"
-                    } else {
-                        addData(nextToken); // store any input data into list
+            while (lineScanner.hasNext()) {  // process each token in the line one by one
+                String token = lineScanner.next();
+                if (token.equals("SETUP")) {
+                    scanSetupRun(lineScanner, token); // scan "SETUP SIMULATION (NAME) WITH NUMBER GROUPS"
+                } else if (token.equals("WHERE")) {
+                    while (lineScanner.hasNext()) { // scan each token
+                        nextToken = lineScanner.next();
+                        if (nextToken.equals("TYPE")) { // scan "WHERE TYPE IS SCHELLING"
+                            scanWhere(lineScanner, nextToken);
+                        } else if (nextToken.equals("VACANT")) {
+                            scanWhere(lineScanner, nextToken); // scan "WHERE VACANT IS NUMBER"
+                        } else if (nextToken.equals("GROUPS")) {
+                            scanWhere(lineScanner, nextToken); // scan "WHERE GROUPS WITH (A: green: 20,...)"
+                        } else if (nextToken.equals("SIMILARITY")) {
+                            scanWhere(lineScanner, nextToken); // scan "WHERE SIMILARITY IS NUMBER"
+                        } else if (nextToken.equals("MOVING")) {
+                            scanWhere(lineScanner, nextToken); // scan "WHERE MOVING IS RANDOM"
+                        } else {
+                            throw new Exception("Invalid command: WHERE " + nextToken);
+                        }
                     }
+                } else if (token.equals("RUN")) {
+                    scanSetupRun(lineScanner, token); // scan "RUN SIMULATION FOR (NUMBER|NO) TICKS"
+                } else if (token.equals("CALCULATION")) {
+                    scanCalculation(lineScanner, token); // scan the simple calculation (+,-,*,/)
+                } else {
+                    throw new Exception("Invalid token: " + token);
                 }
-            } else if (token.equals("RUN")) {
-                scanRun(inputScanner, token); // scan "RUN SIMULATION FOR (NUMBER|NO) TICKS"
-            } else if (token.equals("a") || token.equals("b") || token.equals("c")) {
-                scanCalculation(inputScanner, token); // scan the simple calculation (+,-,*,/)
-            } else {
-                val = token;
-                addData(val);
             }
+            // add an end-of-command token at the end of each line
+            addUniqueToken(tokenList, new Token("end_command", "end of command", String.valueOf(i), 0));
+            i++;
         }
     }
 
-    // FUNCTION SCANS "SETUP SIMULATION (NAME) WITH NUMBER GROUPS"
-    public void scanSetup(Scanner inputScanner, String token) {
-        String val = String.valueOf(token);
-        String typ;
-        int i = 1;
+    // SCAN SETUP AND RUN COMMAND
+    public void scanSetupRun(Scanner inputScanner, String token) throws Exception {
+        String typ = "";  // store token type
+        String val = String.valueOf(token); // store token value
 
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
-            if (i == 1) {
-                if (nextToken.equals("SIMULATION")) { // check "SIMULATION"
+            if (nextToken.equals("SIMULATION")) { // check "SIMULATION"
+                if (val.equals("SETUP")) {
                     val += " " + nextToken;
                     typ = "simulation";
-                    addUniqueToken(tokenList, new Token(typ, val, ""));  // store "SETUP SIMULATION" into tokenList
-                    i++;
-                    // print to console to check
-                    System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-                } else {
-                    val += " " + nextToken;
-                    addData(val);
-                    i++;
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
                 }
-            } else if (i == 2) {  // check NAME
-                val = nextToken;
-                typ = "letter_letterordigit";
-                addUniqueToken(tokenList, new Token(typ, val, "")); // store token "NAME" into tokenList
-                i++;
-                // print to console to check
-                System.out.println("2- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else if (i == 3) { // check "WITH"
-                val = nextToken;
-                typ = "letterordigit";
-                addUniqueToken(tokenList, new Token(typ, val, "")); // store token "WITH" into tokenList
-                i++;
-                // print to console to check
-                System.out.println("3- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else if (i == 4) {  // check "NUMBER"
-                val = nextToken;
-                typ = "n_integer";
-                addUniqueToken(tokenList, new Token(typ, val, "setup")); // store token "NUMBER" into tokenList
-                i++;
-                // print to console to check
-                System.out.println("4- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else if (i == 5) { // check "GROUPS"
-                val = nextToken;
-                typ = "letterordigit";
-                addUniqueToken(tokenList, new Token(typ, val, "")); // store token "GROUPS" into tokenList
-                i++;
-                // print to console to check
-                System.out.println("5- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
+                if (val.equals("RUN")) {
+                    val += " " + nextToken;
+                    typ = "run";
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
+                }
             } else {
-                addData(nextToken);
-                i++;
+                throw new Exception("Invalid command SETUP or RUN");
             }
+            scanNextToken(inputScanner, nextToken);
         }
     }
 
-    // FUNCTION SCANS GROUP OF "WHERE COMMANDS"
-    public void scanWhere(Scanner inputScanner, String token) {
+    // SCAN GROUP OF "WHERE COMMANDS"
+    public void scanWhere(Scanner inputScanner, String token) throws Exception {
         String val = "WHERE" + " " + String.valueOf(token);
         String typ;
-        int i = 1;
 
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
-            if (i == 1) {
-                if (nextToken.equals("IS")) { // check "IS"
+            if (nextToken.equals("IS")) { // check "IS"
+                if (val.equals("WHERE TYPE")) {
                     val += " " + nextToken;
                     typ = "typesimulation";
-                    addUniqueToken(tokenList, new Token(typ, val, ""));  // store token "WHERE TYPE IS" into tokenList
-                    i++;
-                    // print to console to check
-                    System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-                } else {
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
+                } else if (val.equals("WHERE VACANT")) {
                     val += " " + nextToken;
-                    addData(val);
-                    i++;
+                    typ = "vacant";
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
+                } else if (val.equals("WHERE SIMILARITY")) {
+                    val += " " + nextToken;
+                    typ = "similarity";
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
+                } else if (val.equals("WHERE MOVING")) {
+                    val += " " + nextToken;
+                    typ = "moving";
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
                 }
-            } else if (i == 2) {  // check "SCHELLING, NUMBER, RANDOM"
-                val = nextToken;
-                if (isInteger(val)) {
-                    typ = "n_integer";
-                }else if(val == "SCHELLING"|| val == "RANDOM"){
-                    typ = "typemoving";
+            } else if (nextToken.equals("WITH")) { // check "WITH"
+                if (val.equals("WHERE GROUPS")) {
+                    val += " " + nextToken;
+                    typ = "groups";
+                    addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
                 }
-                else {
-                    typ = "letterordigit";
-                }
-                addUniqueToken(tokenList, new Token(typ, val, "")); // store token into tokenList
-                i++;
-                // print to console to check
-                System.out.println("2- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
             } else {
-                addData(nextToken);
-                i++;
+                throw new Exception("Invalid command WHERE");
             }
+            scanNextToken(inputScanner, nextToken);
         }
     }
 
-    // FUNCTION SCANS "WHERE GROUPS WITH (A: green: 20,...)"
-    public void scanWhereGroups(Scanner inputScanner, String token) throws Exception {
-        String val = "WHERE" + " " + String.valueOf(token);
-        String typ;
-
-        while (inputScanner.hasNext()) { // scan each token
-            String nextToken = inputScanner.next();
-            if (nextToken.equals("WITH")) { // check "WITH"
-                val += " " + nextToken;
-                typ = "group";
-                addUniqueToken(tokenList, new Token(typ, val, ""));  // store token "WHERE TYPE IS" into tokenList
-                // print to console to check
-                System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else {
-                val += " " + nextToken;
-                addData(val);
-            }
-            // scan groups (NAME1: COLOR1: RATIO1, ... )
-            String line = inputScanner.nextLine(); // scan line
-            Scanner lineScanner = new Scanner(line);
-            int n = 1; // mark ratio command
-            while (lineScanner.hasNext()) { // scan each token
-                if (!lineScanner.hasNext()) {
-                    throw new Exception("Missing name value for group");
-                }
-                String group = lineScanner.next(); // scan name
-                if (!lineScanner.hasNext()) {
-                    throw new Exception("Missing color value for group: " + group);
-                }
-                String color = lineScanner.next(); // scan color
-                if (!lineScanner.hasNext()) {
-                    throw new Exception("Missing ratio value for group: " + group);
-                }
-                String ratio = lineScanner.next(); // scan ratio
-                // Input group, color, and ratio strings in function ScanGroup to create and store tokens
-                ScanGroup(group, color, ratio, String.valueOf(n));
-                n++;
-            }
-         }
-    }
-
-    // FUNCTION SCANS "RUN SIMULATION FOR (NUMBER|NO) TICKS"
-    public void scanRun(Scanner inputScanner, String token) {
+    // SCAN SIMPLE CALCULATION
+    public void scanCalculation(Scanner inputScanner, String token) throws Exception {
         String val = String.valueOf(token);
         String typ;
-        int i = 1;
-
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
-            if (i == 1) {
-                if (nextToken.equals("SIMULATION")) { // check "SIMULATION"
-                    val += " " + nextToken;
-                    i++;
-                } else {
-                    val += " " + nextToken;
-                    i++;
-                }
-            } else if (i == 2) {  // check "FOR"
-                if (nextToken.equals("FOR")) { // check "FOR"
-                    val += " " + nextToken;
-                    typ = "simulation";
-                    addUniqueToken(tokenList, new Token(typ, val, ""));  // store "SETUP SIMULATION" into tokenList
-                    i++;
-                    // print to console to check
-                    System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-                } else {
-                    val += " " + nextToken;
-                    addData(val);
-                    i++;
-                }
-            } else if (i == 3) { // check "NUMBER TICKS/NO"
-                val = nextToken;
-                if (isInteger(val)) {
-                    typ = "n_integer";
-                } else {
-                    typ = "letterordigit";
-                }
-                addUniqueToken(tokenList, new Token(typ, val, "")); // store token into tokenList
-                i++;
-                // print to console to check
-                System.out.println("3- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else if (i == 4) {  // check "TICKS"
-                val = nextToken;
-                typ = "letterordigi";
-                addUniqueToken(tokenList, new Token(typ, val, "setup")); // store token "NUMBER" into tokenList
-                i++;
-                // print to console to check
-                System.out.println("4- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else {
-                addData(nextToken);
-                i++;
+            if (val.equals("CALCULATION")) {
+                typ = "calculation";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));  // save token "WHERE TYPE IS"
+                scanNextToken(inputScanner, nextToken);
             }
         }
     }
 
-    // FUNCTION SCANS THE SIMPLE CALCULATION (+,-,*,/)
-    public void scanCalculation(Scanner inputScanner, String token) throws Exception {
-       String val = String.valueOf(token);
+    // SCAN NEXT TOKEN
+    public void scanNextToken(Scanner inputScanner, String token) throws Exception {
+        String val = String.valueOf(token);
         String typ;
-
-        if (val.contains("a") || val.contains("b") || val.contains("c")) {
-            typ = "calculation";
-            addUniqueToken(tokenList, new Token(typ, val, "")); // store token "a|b|c" into tokenList
-            // print to console to check
-            System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-        } else {
-            throw new Exception("Expected 'a|b|c' but found " + val);
-        }
-        String assign = inputScanner.next();
-        if (assign.equals("=")) {
-            val = assign;
-            typ = "equal";
-            addUniqueToken(tokenList, new Token(typ, val, "")); // store token "=" into tokenList
-            // print to console to check
-            System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-        } else {
-            throw new Exception("Expected '=' but found " + assign);
-        }
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
-            val = nextToken;
-            if (isInteger(val)) {
+            if (isInteger(nextToken)) {
+                val = nextToken;
                 typ = "n_integer";
-                addUniqueToken(tokenList, new Token(typ, val, ""));  // store number into tokenList
-                // print to console to check
-                System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-            } else if (val.contains("*") || val.contains("/") || val.contains("+") || val.contains("-")) {
-                if (val.contains("*") || val.contains("/")) {
-                    typ = "multoperator";
-                }
-                if (val.contains("+") || val.contains("-")) {
-                    typ = "addoperator";
-                }
-                 addUniqueToken(tokenList, new Token(typ, val, ""));  // store operator into tokenList
-
-                // print to console to check
-                System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-              //  System.out.println("number of words" + "" + numWords);
-
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (isAlphanumeric(extractString(nextToken))) {
+                val = extractString(nextToken);
+                typ = "letterordigit";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (nextToken.equals("RED") || nextToken.equals("GREEN") || nextToken.equals("YELLOW")
+                    || nextToken.equals("CYAN") || nextToken.equals("PINK")) {
+                val = nextToken;
+                typ = "color";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (nextToken.equals("a") || nextToken.equals("b") || nextToken.equals("c")) {
+                val = nextToken;
+                typ = "indentifier";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (nextToken.equals("=")) {
+                val = nextToken;
+                typ = "equal";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (nextToken.equals("+") || nextToken.equals("-")) {
+                val = nextToken;
+                typ = "addoperator";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
+            } else if (nextToken.equals("*") || nextToken.equals("/")) {
+                val = nextToken;
+                typ = "multoperator";
+                addUniqueToken(tokenList, new Token(typ, val, "", 0));
             } else {
-                throw new Exception("Expected 'number' or 'operator' but found " + val);
+                throw new Exception("Invalid character: " + nextToken);
             }
         }
-        addUniqueToken(tokenList, new Token(typ ="newline", val="", ""));
-        System.out.println("1- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
     }
 
-    // FUNCTION STORES GROUP OF THE TOKENS (NAME: COLOR: RATIO) INTO THE LIST
-    public void ScanGroup(String group1, String color1, String ratio1, String command) throws Exception {
-        String val, typ;
-        val = String.valueOf(group1);
-        typ = "letterordigit";
-        addUniqueToken(tokenList, new Token(typ, val, "")); // store token "name of group" into tokenList
-        // print to console to check
-        System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-        val = String.valueOf(color1);
-        typ = "color";
-        addUniqueToken(tokenList, new Token(typ, val, "")); // store token "color of group" into tokenList
-        // print to console to check
-        System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-        val = String.valueOf(ratio1);
-        typ = "n_integer";
-        addUniqueToken(tokenList, new Token(typ, val, command)); // store token "ratio of group" into tokenList
-        // print to console to check
-        System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-    }
-
-    // FUNCTION ADDS EACH TOKEN INTO THE LIST
+    // ADD EACH TOKEN INTO THE LIST
     public static void addUniqueToken(List<Token> tokenList, Token newToken) {
         String exactVal = extractString(newToken.getVal());
         newToken.addVal(exactVal);
@@ -337,14 +199,7 @@ public class SMLAScanner {
         }
     }
 
-    // FUNCTION ADDS OTHER DATA INTO THE LIST
-    private void addData(String val) {
-        String typ = "unknown";
-        addUniqueToken(tokenList, new Token(typ, val, ""));
-        System.out.println("- Token(type: " + typ + "," + " " + "value: " + "'" + val + "'" + ")");
-    }
-
-    // FUNCTION GETS EXACTLY STRING
+    // GET EXACTLY STRING
     public static String extractString(String input) {
         // Define the regular expression pattern
         Pattern pattern = Pattern.compile("^[#(]|[,:)]$");
@@ -352,7 +207,7 @@ public class SMLAScanner {
         return input;
     }
 
-    // FUNCTION TO CHECK IF STRING IS INTEGER
+    // CHECK IF STRING IS INTEGER
     public boolean isInteger(String str) {
         try {
             Integer.parseInt(str);
@@ -362,17 +217,28 @@ public class SMLAScanner {
         }
     }
 
+    // CHECK ÌF STRING IS ONLY ALPHABETS AND NUMBERS
+    public static boolean isAlphanumeric(String str) {
+        return str != null && str.matches("^[a-zA-Z0-9]+$");
+    }
+
+    public static String toUpperCase(String input) {
+        return input.toUpperCase();
+    }
+
     // CLASS TOKEN
     public class Token {
         private String typ;
         private String val;
+        private int lineNumber;
         private List<String> commands;
 
-        public Token(String typ, String val, String command) {
+        public Token(String typ, String val, String command, int lineNumber) {
             this.typ = typ;
             this.val = val;
             this.commands = new ArrayList<>();
             this.commands.add(command);
+            this.lineNumber = lineNumber;
         }
 
         public String getVal() {
@@ -394,6 +260,14 @@ public class SMLAScanner {
         public List<String> getCommands() {
             return commands;
         }
+
+        public int getLineNumber() {
+            return lineNumber;
+        }
+
+        public void setLineNumber(int lineNumber) {
+            this.lineNumber = lineNumber;
+        }
     }
 
     // FUNCTION GETS "tokenList"
@@ -406,23 +280,29 @@ public class SMLAScanner {
         Scanner scanner = new Scanner(System.in);
         SMLAScanner smlaScanner = new SMLAScanner(scanner);
         boolean continueScanning = true;
+        StringBuilder input = new StringBuilder();
+        System.out.println("\nEnter your commands (type 'run' to execute):");
         while (continueScanning) {
-            System.out.print("\n Enter a command ('exit' to quit): ");
-            String input = scanner.nextLine();
-            System.out.println("\n Print Token from variables: ");
-            if (input.equals("exit")) {
+            smlaScanner.getTokenList().clear();
+            String line = scanner.nextLine();
+            if (line.equals("run")) {
                 continueScanning = false;
             } else {
-                smlaScanner.tokenizeInput(input);
-                System.out.println("\n Print Token from List: ");
-                int i = 1;
-                for (Token token : smlaScanner.getTokenList()) {
-                    System.out.println(i + "-type: " + token.getTyp() + ", value: " + token.getVal());
-                    i++;
-                }
+
+                String UpperLine = toUpperCase(line);
+                input.append(UpperLine).append("\n");
             }
+        }
+        smlaScanner.getTokenList().clear(); // reset the TokenList before scanning new input
+        smlaScanner.tokenizeInput(input.toString());
+        System.out.println("\nPrint Token from List: ");
+        int i = 1;
+        for (Token token : smlaScanner.getTokenList()) {
+            System.out.println(i + "-type: " + token.getTyp() + ", value: " + token.getVal());
+            i++;
         }
     }
 }
+
 
 
