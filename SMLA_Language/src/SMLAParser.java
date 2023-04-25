@@ -22,10 +22,10 @@ public class SMLAParser {
         similarity("WHERE SIMILARITY IS"),
         moving("WHERE MOVING IS"),
         run("RUN SIMULATION FOR"),
-        color("color", "red", "green", "yellow", "cyan", "pink"),
+        color("color", "RED", "GREEN", "YELLOW", "CYAN", "PINK", "BLUE"),
         typemoving("'RANDOM or SCHELLING'", "RANDOM", "SCHELLING"),
         calculation("CALCULATION"),
-        identifier("a, b or c", "a", "b", "c"),
+        identifier("a, b or c", "A", "B", "C"),
         letterordigit("ALPHABETS and NUMBER"),
         phrase("WITH, GROUPS, TICKS  or NO"),
         addoperator("operator + or -", "+", "-"),
@@ -134,8 +134,8 @@ public class SMLAParser {
         }
         matchType(TokenType.typesimulation);
         matchKeywordValue(TokenType.typesimulation);
-        matchType(TokenType.letterordigit);
-        matchStringValue(TokenType.letterordigit);
+        matchType(TokenType.typemoving);
+        matchStringValue(TokenType.typemoving);
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Type simulation' parsed successfully");
     }
@@ -472,9 +472,8 @@ public class SMLAParser {
         throw new ParseException(String.format(errorMessage, lineNumber, unexpectedToken, expectedToken), lineNumber);
     }
 
-
     // CLASS TOKEN
-    public class Token {
+    public static class Token {
         private String typ;
         private String val;
         private int lineNumber;
@@ -496,11 +495,12 @@ public class SMLAParser {
             return typ;
         }
 
-        public void addValue(String newValue) {String newVal;
+        public void addVal(String newVal) {
+            val = newVal;
         }
 
-        public void addType(String newType) {
-            String newTyp;
+        public void addTyp(String newTyp) {
+            typ = newTyp;
         }
 
         public List<String> getCommands() {
@@ -573,7 +573,7 @@ public class SMLAParser {
     }
 
     // CHECK PROGRAM
-    public static void main(String[] args) {
+    /*public static void main(String[] args) {
         List<SMLAParser.Token> tokens = new ArrayList<>();
         // WHERE GROUPS WITH (name: color: ratio:...)
         tokens.add(new SMLAParser().new Token("group", "WHERE GROUPS WITH","", 10));
@@ -660,6 +660,6 @@ public class SMLAParser {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 
 }
