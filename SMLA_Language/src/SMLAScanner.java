@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 public class SMLAScanner {
     private Scanner scanner;
     private static List<Token> tokenList;
+    int lineNum = 1;
 
     public SMLAScanner(Scanner scanner) { // constructor
         this.scanner = scanner;
@@ -21,130 +22,142 @@ public class SMLAScanner {
         // split the input string into lines
         inputScanner.useDelimiter(Pattern.compile("[\r\n]+"));
         String nextToken = ""; // store the next token
-        int i = 0;
 
         while (inputScanner.hasNext()) { // process each line in the input string one by one
             String line = inputScanner.next();
             Scanner lineScanner = new Scanner(line);
             lineScanner.useDelimiter(Pattern.compile("\\s+"));
-
+            if (line.matches("\\s*//.*")) { // skip comment lines
+                continue;
+            }
             while (lineScanner.hasNext()) {  // process each token in the line one by one
                 String token = lineScanner.next();
-                if (token.equals("SETUP")) {
-                    scanSetup(lineScanner, token); // scan "SETUP SIMULATION (NAME) WITH NUMBER GROUPS"
-                } else if (token.equals("WHERE")) {
-                    while (lineScanner.hasNext()) { // scan each token
-                        nextToken = lineScanner.next();
-                        if (nextToken.equals("TYPE")) { // scan "WHERE TYPE IS SCHELLING"
-                            scanWhere(lineScanner, nextToken);
-                        } else if (nextToken.equals("VACANT")) {
-                            scanWhere(lineScanner, nextToken); // scan "WHERE VACANT IS NUMBER"
-                        } else if (nextToken.equals("GROUPS")) {
-                            scanGroups(lineScanner, nextToken); // scan "WHERE GROUPS WITH (A: green: 20,...)"
-                        } else if (nextToken.equals("SIMILARITY")) {
-                            scanWhere(lineScanner, nextToken); // scan "WHERE SIMILARITY IS NUMBER"
-                        } else if (nextToken.equals("MOVING")) {
-                            scanWhere(lineScanner, nextToken); // scan "WHERE MOVING IS RANDOM"
-                        } else {
-                            throw new Exception("Invalid command: WHERE " + nextToken);
+                switch (token) {
+                    case "SETUP" -> scanSetupRunReport(lineScanner, token); // scan "SETUP SIMULATION..."
+                    case "WHERE" -> {
+                        if (!lineScanner.hasNext()) {
+                            throw new Exception("\nInvalid command on line " + lineNum + ": WHERE is missing word");
+                        }
+                        while (lineScanner.hasNext()) {
+                            nextToken = lineScanner.next();
+                            switch (nextToken) {
+                                case "PREF", "VACANT" -> scanWhere(lineScanner, nextToken);
+                                default ->
+                                        throw new Exception("\nInvalid command on line " + lineNum + ": WHERE " + nextToken);
+                            }
                         }
                     }
-                } else if (token.equals("RUN")) {
-                    scanRun(lineScanner, token); // scan "RUN SIMULATION FOR (NUMBER|NO) TICKS"
-                } else if (token.equals("CALCULATION")) {
-                    scanCalculation(lineScanner, token); // scan the simple calculation (+,-,*,/)
-                } else {
-                    throw new Exception("Invalid token: " + token);
+                    case "USING" -> scanUsing(lineScanner, token); // scan "USING RANDOM..."
+                    case "RUN", "REPORT" ->
+                            scanSetupRunReport(lineScanner, token); // scan "RUN" and "REPORT SIMULATION..."
+                    default -> scanVariable(lineScanner, token); // scan Variable
                 }
             }
             // add an end-of-command token at the end of each line
-            tokenList.add(new Token("end_command", "end of command", String.valueOf(i), 0));
-            i++;
+            if (!line.startsWith("//")) { // skip adding end_command for comment lines
+                tokenList.add(new Token("end_command", "end of command", lineNum));
+            }
+            lineNum++;
         }
     }
 
-    // SCAN SETUP COMMAND
-    public void scanSetup(Scanner inputScanner, String token) throws Exception {
+    // SCAN SETUP, RUN AND REPORT COMMAND
+    public void scanSetupRunReport(Scanner inputScanner, String token) throws Exception {
         String val = String.valueOf(token); // store token value
+        if (!inputScanner.hasNext()) {
+            throw new Exception("\nError on line " + lineNum + " 'command' is missing word");
+        }
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             if (nextToken.equals("SIMULATION")) { // check "SIMULATION"
                 if (val.equals("SETUP")) {
                     val += " " + nextToken;
-                    addUniqueToken(tokenList, "simulation",val); // save token "WHERE TYPE IS"
+                    addUniqueToken(tokenList, "simulation", val, lineNum); // save token "SETUP SIMULATION..."
+                }
+                if (val.equals("RUN")) {
+                    val += " " + nextToken;
+                    addUniqueToken(tokenList, "run", val, lineNum); // save token "RUN SIMULATION..."
+                }
+                if (val.equals("REPORT")) {
+                    val += " " + nextToken;
+                    addUniqueToken(tokenList, "report", val, lineNum); // save token "REPORT SIMULATION..."
                 }
             } else {
-                throw new Exception("Invalid command SETUP");
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
             }
             scanNextToken(inputScanner, nextToken);
         }
     }
 
-    // SCAN GROUP OF "WHERE COMMANDS"
+    // SCAN WHERE PREF AND WHERE VACANT COMMANDS
     public void scanWhere(Scanner inputScanner, String token) throws Exception {
         String val = "WHERE" + " " + String.valueOf(token);
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             if (nextToken.equals("IS")) { // check "IS"
-                if (val.equals("WHERE TYPE")) {
-                    val += " " + nextToken;
-                    addUniqueToken(tokenList, "typesimulation",val);  // save token "WHERE TYPE IS"
-                } else if (val.equals("WHERE VACANT")) {
-                    val += " " + nextToken;
-                    addUniqueToken(tokenList, "vacant",val); // save token "WHERE VACANT IS"
-                } else if (val.equals("WHERE SIMILARITY")) {
-                    val += " " + nextToken;
-                    addUniqueToken(tokenList, "similarity",val);// save token "WHERE SIMILARITY IS"
-                } else if (val.equals("WHERE MOVING")) {
-                    val += " " + nextToken;
-                    addUniqueToken(tokenList, "moving",val);  // save token "WHERE MOVING IS"
+                switch (val) {
+                    case "WHERE PREF" -> {
+                        val += " " + nextToken;
+                        addUniqueToken(tokenList, "pref", val, lineNum);  // save token "WHERE PREF IS..."
+                    }
+                    case "WHERE VACANT" -> {
+                        val += " " + nextToken;
+                        addUniqueToken(tokenList, "vacant", val, lineNum); // save token "WHERE VACANT IS..."
+                    }
                 }
+            } else {
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
             }
             scanNextToken(inputScanner, nextToken);
         }
     }
 
-    // SCAN WHERE GROUPS COMMAND
-    public void scanGroups(Scanner inputScanner, String token) throws Exception {
-        String val = "WHERE" + " " + String.valueOf(token);
-        while (inputScanner.hasNext()) { // scan each token
-            String nextToken = inputScanner.next();
-            if (nextToken.equals("WITH")) { // check "WITH"
-                val += " " + nextToken;
-                addUniqueToken(tokenList, "group",val);  // save token "WHERE GROUPS WITH"
-            } else {
-                throw new Exception("Invalid command WHERE GROUPS");
-            }
-            scanNextToken(inputScanner, nextToken);
-        }
-    }
-
-    // SCAN RUN COMMAND
-    public void scanRun(Scanner inputScanner, String token) throws Exception {
-        String val = String.valueOf(token); // store token value
-        while (inputScanner.hasNext()) { // scan each token
-            String nextToken = inputScanner.next();
-            String next = inputScanner.next();
-            if (val.equals("RUN") && (next.equals("FOR"))) {
-                val += " " + nextToken + " " + next;
-                addUniqueToken(tokenList, "run",val);  // save token "WHERE TYPE IS"
-            } else {
-                throw new Exception("Invalid command RUN");
-            }
-            scanNextToken(inputScanner, nextToken);
-        }
-    }
-    // SCAN SIMPLE CALCULATION
-    public void scanCalculation(Scanner inputScanner, String token) throws Exception {
+    // SCAN MOVING COMMAND
+    public void scanUsing(Scanner inputScanner, String token) throws Exception {
         String val = String.valueOf(token);
+        if (!inputScanner.hasNext()) {
+            throw new Exception("\nError on line " + lineNum + " 'using command' is missing word");
+        }
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
-            if (val.equals("CALCULATION")) {
-                addUniqueToken(tokenList, "calculation","CALCULATION");
+            if (val.equals("USING")) {
+                addUniqueToken(tokenList, "using", val, lineNum);
             }
-            if (nextToken.matches("^(?!.[ABC]).*$")) {
-                addUniqueToken(tokenList, "identifier",nextToken);}
+            if (nextToken.equals("RANDOM")) {
+                addUniqueToken(tokenList, "typeMoving", nextToken, lineNum);
+            } else {
+                addUniqueToken(tokenList, "alphanumeric", nextToken, lineNum);
+            }
             scanNextToken(inputScanner, nextToken);
+        }
+    }
+
+    // SCAN VARIABLE
+    public void scanVariable(Scanner inputScanner, String token) throws Exception {
+        String val = extractString(token);
+        if (isAlphanumeric(val)&& !val.equals("setup")&&!val.equals("where")&&
+                !val.equals("run")&&!val.equals("using")&&!val.equals("report")) {
+            if (!inputScanner.hasNext()) {
+                throw new Exception("\nError on line " + lineNum + " Missing equal '=' or value of variable");
+            }
+            String nextToken = inputScanner.next();
+            if (!nextToken.equals("=")) {
+                throw new Exception("\nError on line " + lineNum + " Missing equal '='");
+            }
+            if (!inputScanner.hasNext()) {
+                throw new Exception("\nError on line " + lineNum + " Missing value of variable");
+            }
+            nextToken = inputScanner.next();
+            if (inputScanner.hasNextInt() || inputScanner.hasNextFloat() || isAlphanumeric(extractString(nextToken))) {
+                addUniqueToken(tokenList, "variable", val, extractString(nextToken), lineNum);
+            } else {
+                throw new Exception("\nError on line " + lineNum + " Invalid value of variable");
+            }
+            if (inputScanner.hasNext()) {
+                throw new Exception("\nError on line " + lineNum + " Invalid value of variable");
+            }
+        } else {
+            throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + token);
         }
     }
 
@@ -154,43 +167,46 @@ public class SMLAScanner {
             String nextToken = inputScanner.next();
             String exactSt = extractString(nextToken);
             if (isInteger(nextToken)) {
-                addUniqueToken(tokenList, "n_integer",exactSt);
+                addUniqueToken(tokenList, "n_integer", exactSt, lineNum);
             } else if (isAlphanumeric(exactSt)) {
                 if (exactSt.equals("RED") || exactSt.equals("GREEN") || exactSt.equals("YELLOW")
                         || exactSt.equals("CYAN") || exactSt.equals("PINK") || exactSt.equals("BLUE")) {
-                    addUniqueToken(tokenList, "color",exactSt);
-                }else if (exactSt.equals("WITH") || exactSt.equals("GROUPS") || exactSt.equals("TICKS")) {
-                    addUniqueToken(tokenList, "phrase",nextToken);
-                }else if (exactSt.equals("RANDOM") || exactSt.equals("SCHELLING") ) {
-                    addUniqueToken(tokenList, "typemoving", exactSt);
-                }
-                else if (isInteger(exactSt)) {
-                    addUniqueToken(tokenList, "n_integer",exactSt);
-                }
-                else {
-                    addUniqueToken(tokenList, "letterordigit",exactSt);
+                    addUniqueToken(tokenList, "color", exactSt, lineNum);
+                } else if (exactSt.equals("WITH") || exactSt.equals("GROUPS") || exactSt.equals("TICKS")
+                        || exactSt.equals("FOR") || exactSt.equals("MOVE") || exactSt.equals("AS")) {
+                    addUniqueToken(tokenList, "phrase", nextToken, lineNum);
+                } else if (isInteger(exactSt)) {
+                    addUniqueToken(tokenList, "n_integer", exactSt, lineNum);
+                } else {
+                    addUniqueToken(tokenList, "alphanumeric", exactSt, lineNum);
                 }
             } else if (nextToken.equals("=")) {
-                addUniqueToken(tokenList, "equal",nextToken);
+                addUniqueToken(tokenList, "assignmentOperator", nextToken, lineNum);
             } else if (nextToken.equals("+") || nextToken.equals("-")) {
-                addUniqueToken(tokenList, "addoperator",nextToken);
+                addUniqueToken(tokenList, "addOperator", nextToken, lineNum);
             } else if (nextToken.equals("*") || nextToken.equals("/")) {
-                addUniqueToken(tokenList, "multoperator",nextToken);
+                addUniqueToken(tokenList, "multiOperator", nextToken, lineNum);
             } else {
-                throw new Exception("Invalid character: " + nextToken);
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
             }
         }
     }
 
     // ADD EACH TOKEN INTO THE LIST
-    public void addUniqueToken(List<Token> tokenList, String typ, String val) {
-        tokenList.add(new Token(typ, val, "", 0));
+    public void addUniqueToken(List<Token> tokenList, String typ, String val, int lineNumber) {
+        tokenList.add(new Token(typ, val, lineNum));
+    }
+
+    public void addUniqueToken(List<Token> tokenList, String typ, String val, String variable, int lineNumber) {
+        tokenList.add(new Token(typ, val, variable, "", lineNumber));
     }
 
     // GET EXACTLY STRING
     public static String extractString(String input) {
         // Define the regular expression pattern
-        Pattern pattern = Pattern.compile("^[#(]|[,:)]$");
+        Pattern pattern = Pattern.compile("^[#(\"\']|[:,),\"\']$");
+
+        // Pattern pattern = Pattern.compile("^[#(]|[,:)]$");
         input = pattern.matcher(input).replaceAll("");
         return input;
     }
@@ -205,9 +221,9 @@ public class SMLAScanner {
         }
     }
 
-    // CHECK ÌF STRING IS ONLY ALPHABETS AND NUMBERS
+    // CHECK IF STRING IS ONLY ALPHABETS AND NUMBERS
     public static boolean isAlphanumeric(String str) {
-        return str != null && str.matches("^[a-zA-Z0-9]+$");
+        return str != null && str.matches("^[a-zA-Z0-9_]+$");
     }
 
     public static String toUpperCase(String input) {
@@ -215,58 +231,29 @@ public class SMLAScanner {
     }
 
     // CLASS TOKEN
-    public class Token {
-        private String typ;
-        private String val;
-        private int lineNumber;
-        private List<String> commands;
 
-        public Token(String typ, String val, String command, int lineNumber) {
-            this.typ = typ;
-            this.val = val;
-            this.commands = new ArrayList<>();
-            this.commands.add(command);
-            this.lineNumber = lineNumber;
-        }
-
-        public String getVal() {
-            return val;
-        }
-
-        public String getTyp() {
-            return typ;
-        }
-
-        public void addVal(String newVal) {
-            val = newVal;
-        }
-
-        public void addTyp(String newTyp) {
-            typ = newTyp;
-        }
-
-        public List<String> getCommands() {
-            return commands;
-        }
-
-        public int getLineNumber() {
-            return lineNumber;
-        }
-
-        public void setLineNumber(int lineNumber) {
-            this.lineNumber = lineNumber;
-        }
-    }
 
     // FUNCTION GETS "tokenList"
     public static List<Token> getTokenList() {
         return tokenList;
     }
 
-    // MAIN FUNCTION
-   /* public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
+        // Input from string
+        /* String input = "x = 10";
+        // create scanner for the input string
+        Scanner scanner = new Scanner(input);
+
+        // create SMLA scanner
+        SMLAScanner smlaScanner = new SMLAScanner(scanner);
+
+        // tokenize the input
+        smlaScanner.tokenizeInput(input);*/
+
+        // Input from console
         Scanner scanner = new Scanner(System.in);
         SMLAScanner smlaScanner = new SMLAScanner(scanner);
+
         boolean continueScanning = true;
         StringBuilder input = new StringBuilder();
         System.out.println("\nEnter your commands (type 'run' to execute):");
@@ -282,12 +269,19 @@ public class SMLAScanner {
         }
         getTokenList().clear(); // reset the TokenList before scanning new input
         smlaScanner.tokenizeInput(input.toString());
+
         System.out.println("\nPrint Token from List: ");
         int i = 1;
         for (Token token : getTokenList()) {
-            System.out.println(i + "-type: " + token.getTyp() + ", value: " + token.getVal());
+            // tokens.add(token);
+            if (token.getType().equals("variable")) {
+                System.out.println(i + "-type: " + token.getType() + ", value: " +
+                        token.getValue() + ", variable value: " + token.getVariableValue() + ", line: " + token.getLineNumber());
+            } else {
+                System.out.println(i + "-type: " + token.getType() + ", value: " + token.getValue() +
+                        ", line: " + token.getLineNumber());
+            }
             i++;
         }
-    }*/
+    }
 }
-
