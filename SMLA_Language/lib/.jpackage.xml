@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<jpackage-state version="17.0.3" platform="windows">
+  <app-version>1.0</app-version>
+  <main-launcher>NetLogo</main-launcher>
+  <signed>false</signed>
+  <add-launcher>NetLogo_Console</add-launcher>
+  <add-launcher>NetLogo 3D</add-launcher>
+  <add-launcher>HubNet Client</add-launcher>
+  <add-launcher>Behaviorsearch</add-launcher></jpackage-state>

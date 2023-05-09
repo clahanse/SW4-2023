@@ -7,6 +7,7 @@ public class SMLAParser {
     private static int currentTokenIndex;
     private static Token currentToken;
     String nameSimulation;
+    static int totalGroups; // number of groups
     private List<Token> tokens; // list to receive input data
     static List<Token> tokenList = new ArrayList<>(); // token list to save output data
 
@@ -17,7 +18,6 @@ public class SMLAParser {
         vacant("WHERE VACANT IS"),
         using("USING"),
         run("RUN SIMULATION"),
-        color("color", "RED", "GREEN", "YELLOW", "CYAN", "PINK", "BLUE"),
         typeMoving("'RANDOM or SCHELLING'", "RANDOM", "SCHELLING"),
         report("REPORT SIMULATION"),
         alphanumeric("ALPHABETS and NUMBER"),
@@ -31,6 +31,7 @@ public class SMLAParser {
         assignmentOperator("="),
         end_command("'end of line'"),
         EOF("'end of List'");
+
 
         public boolean equals(String value) {
             return Arrays.asList(this.getValues()).contains(value);
@@ -91,6 +92,7 @@ public class SMLAParser {
 
     // 2. PARSER "SETUP SIMULATION '(NAME)' WITH 'GROUPS' AS (Group1, Group2, Group3)"
     private void parseSetupSimulation() throws Exception {
+        int i = 0;
         matchType(TokenType.simulation); // match 'SETUP SIMULATION'
         matchKeywordValue(TokenType.simulation);
         matchType(TokenType.alphanumeric); // match 'NAME'
@@ -105,14 +107,15 @@ public class SMLAParser {
         } else { // GROUPS is variable
             assignVariable(tokens, currentToken); // assign value to variable
         }
-        if (getTokensCommand(tokens, currentTokenIndex) != 1 + totalGroups) { // check number of groups
-            int line = currentToken.getLineNumber();
-            throw new ParseException("\nInvalid number of groups or missing 'AS', line " + line, line);
-        }
         matchType(TokenType.phrase); // match 'AS'
         matchPhraseValue(TokenType.phrase);
-        while (!currentToken.getType().equals("end_command")) { // match (Group1, Group2...)
-            assignVariable(tokens, currentToken);
+        while (!currentToken.getType().equals("end_command")) { // match 'Group1, Group2...'
+            prefGroup(tokens, currentToken);
+            i++;
+        }
+        if (i != totalGroups) { // check number of groups
+            throw new ParseException("\nInvalid number of groups, line " +
+                    currentToken.getLineNumber(), currentToken.getLineNumber());
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Setup Simulation' parsed successfully");
@@ -132,20 +135,17 @@ public class SMLAParser {
                     currentToken.getLineNumber(), currentToken.getLineNumber());
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
-        System.out.println("'Type simulation' parsed successfully");
+        System.out.println("'Pref simulation' parsed successfully");
     }
 
     // 4. PARSER "WHERE VACANT IS Vacant"
     private void parseSetVacant() throws Exception {
-        checkTokens(tokens, currentTokenIndex, 2); // check number of tokens in command
         matchType(TokenType.vacant); // match 'WHERE VACANT IS'
         matchKeywordValue(TokenType.vacant);
         String currentValue = tokens.get(currentTokenIndex).getValue();
-        if (isInteger(currentValue)) { // Vacant is integer
-            matchType(TokenType.n_integer);
-            matchIntegerValue(TokenType.n_integer);
-        } else { // Vacant is variable
-            assignVariable(tokens, currentToken);
+        while (!currentToken.getType().equals("end_command")) { // match 'vacant'
+            prefGroup(tokens, currentToken);
+
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Vacant' parsed successfully");
@@ -173,8 +173,13 @@ public class SMLAParser {
         matchNameSimulation(tokens, currentToken);
         matchType(TokenType.phrase); // match 'FOR'
         matchPhraseValue(TokenType.phrase);
-        matchType(TokenType.n_integer); // match 'NUMBER'
-        matchIntegerValue(TokenType.n_integer);
+        String currentValue = tokens.get(currentTokenIndex).getValue();
+        if (isInteger(currentValue)) { // number is integer
+            matchType(TokenType.n_integer);
+            matchIntegerValue(TokenType.n_integer);
+        } else { // number is variable
+            assignVariable(tokens, currentToken);
+        }
         matchType(TokenType.phrase); // match 'TICKS'
         matchPhraseValue(TokenType.phrase);
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
@@ -217,10 +222,10 @@ public class SMLAParser {
 
     // 3. MATCH THE VALUE OF TYPES "color", "typeMoving", "identifier", "addOperator", "multiOperator"
     private void matchOtherValue(TokenType expectedType) throws ParseException {
-        // check the value are color, type of moving, operator
+        // check the values are type of moving, operator
         String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
         String[] ar_ValueInEnum = TokenType.valueOf(currentToken.getType()).getValues();
-        List<String> allowedTypes = Arrays.asList("color", "identifier", "pref", "addOperator", "multiOperator");
+        List<String> allowedTypes = Arrays.asList("identifier", "pref", "addOperator", "multiOperator");
         if (allowedTypes.contains(currentToken.getType())) {
             if (!findElementInArray(ar_ValueInEnum, currentToken.getValue().trim())) { // don't exist in enum
                 handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
@@ -459,8 +464,6 @@ public class SMLAParser {
     }
 
     // Assign value to variable
-    static int totalGroups; // number of groups
-
     public void assignVariable(List<Token> tokens, Token currentToken) throws Exception {
         int lineNum=currentToken.getLineNumber();
         String typ = "";
@@ -585,10 +588,10 @@ public class SMLAParser {
         List<Token> tokens = new ArrayList<>();
         // Output from Scanner
         // Variable pref1 = 10, vacant = 50
-        tokens.add(new Token("variable","PREF1", "10","", 1));
+      /* tokens.add(new Token("variable","PREF1", "10","", 1));
         tokens.add(new Token("end_command","end of command", "","", 1));
         tokens.add(new Token("variable","VACANT", "50","", 2));
-        tokens.add(new Token("end_command","end of command", "","", 2));
+        tokens.add(new Token("end_command","end of command", "","", 2));*/
 
         // Run simulation Example1 FOR 50 TICKS
         tokens.add(new Token("run","RUN SIMULATION", "","", 3));
@@ -599,15 +602,15 @@ public class SMLAParser {
         tokens.add(new Token("end_command","end of command", "","", 3));
 
         // Report simulation Example1
-        tokens.add(new Token("report","REPORT SIMULATION", "","", 4));
+      /*  tokens.add(new Token("report","REPORT SIMULATION", "","", 4));
         tokens.add(new Token("alphanumeric","EXAMPLE1", "","", 4));
-        tokens.add(new Token("end_command","end of command", "","", 4));
+        tokens.add(new Token("end_command","end of command", "","", 4));*/
 
         // Using random move
-        tokens.add(new Token("using","USING", "","", 5));
+      /*  tokens.add(new Token("using","USING", "","", 5));
         tokens.add(new Token("typeMoving","RANDOM", "","", 5));
         tokens.add(new Token("phrase","MOVE", "","", 5));
-        tokens.add(new Token("end_command","end of command", "","", 5));
+        tokens.add(new Token("end_command","end of command", "","", 5));*/
 
         // Setup simulation (Example1) WITH 4 AS (Group1, Group2, Group3, ABC)
         tokens.add(new Token("simulation","SETUP SIMULATION", "","", 6));
@@ -622,17 +625,18 @@ public class SMLAParser {
         tokens.add(new Token("end_command","end of command", "","", 6));
 
         // Where pref is (10, 20, 30, 40)
-        tokens.add(new Token("pref","WHERE PREF IS", "","", 7));
+     /* tokens.add(new Token("pref","WHERE PREF IS", "","", 7));
         tokens.add(new Token("n_integer","10", "","", 7));
         tokens.add(new Token("n_integer","20", "","", 7));
         tokens.add(new Token("n_integer","30", "","", 7));
         tokens.add(new Token("n_integer","40", "","", 7));
-        tokens.add(new Token("end_command","end of command", "","", 7));
+        tokens.add(new Token("end_command","end of command", "","", 7));*/
 
         // Where vacant is Vacant
-        tokens.add(new Token("vacant","WHERE VACANT IS", "","", 8));
+    /*   tokens.add(new Token("vacant","WHERE VACANT IS", "","", 8));
         tokens.add(new Token("alphanumeric","VACANT", "","", 8));
-        tokens.add(new Token("end_command","end of command", "","", 8));
+         tokens.add(new Token("end_command","end of command", "","", 8));*/
+
 
         try {
             SMLAParser parser = new SMLAParser(tokens);

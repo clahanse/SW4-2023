@@ -1,7 +1,10 @@
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
+
+import static com.sun.tools.javac.util.StringUtils.toUpperCase;
 
 public class SMLAScanner {
     private Scanner scanner;
@@ -60,6 +63,7 @@ public class SMLAScanner {
             lineNum++;
         }
     }
+
 
     // SCAN SETUP, RUN AND REPORT COMMAND
     public void scanSetupRunReport(Scanner inputScanner, String token) throws Exception {
@@ -123,7 +127,7 @@ public class SMLAScanner {
             if (val.equals("USING")) {
                 addUniqueToken(tokenList, "using", val, lineNum);
             }
-            if (nextToken.equals("RANDOM")) {
+            if (nextToken.equals("RANDOM")||nextToken.equals("SCHELLING")) {
                 addUniqueToken(tokenList, "typeMoving", nextToken, lineNum);
             } else {
                 addUniqueToken(tokenList, "alphanumeric", nextToken, lineNum);
@@ -132,7 +136,7 @@ public class SMLAScanner {
         }
     }
 
-    // SCAN VARIABLE
+    // SCAN VARIABLE COMMAND
     public void scanVariable(Scanner inputScanner, String token) throws Exception {
         String val = extractString(token);
         if (isAlphanumeric(val)&& !val.equals("setup")&&!val.equals("where")&&
@@ -239,18 +243,7 @@ public class SMLAScanner {
     }
 
     public static void main(String[] args) throws Exception {
-        // Input from string
-        /* String input = "x = 10";
-        // create scanner for the input string
-        Scanner scanner = new Scanner(input);
 
-        // create SMLA scanner
-        SMLAScanner smlaScanner = new SMLAScanner(scanner);
-
-        // tokenize the input
-        smlaScanner.tokenizeInput(input);*/
-
-        // Input from console
         Scanner scanner = new Scanner(System.in);
         SMLAScanner smlaScanner = new SMLAScanner(scanner);
 
@@ -270,6 +263,29 @@ public class SMLAScanner {
         getTokenList().clear(); // reset the TokenList before scanning new input
         smlaScanner.tokenizeInput(input.toString());
 
+     /*  File inputFile = new File("C:\\Users\\HAI\\OneDrive\\Desktop\\input.txt");
+        if (!inputFile.exists()) {
+            throw new Exception("Input file does not exist.");
+        }
+        if (inputFile.length() == 0) {
+            throw new Exception("File is empty");
+        }
+        Scanner scanner = new Scanner(inputFile);
+        SMLAScanner smlaScanner = new SMLAScanner(scanner);
+        //  List<Token> tokens = new ArrayList<>();
+        List<Token> tokensParser = new ArrayList<>();
+        StringBuilder input = new StringBuilder();
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if (line.isBlank()) {
+                continue; // Skip blank lines
+            }
+            String UpperLine = toUpperCase(line);
+            input.append(UpperLine).append("\n");
+        }
+        // tokenize input using scanner
+        smlaScanner.tokenizeInput(input.toString());*/
+
         System.out.println("\nPrint Token from List: ");
         int i = 1;
         for (Token token : getTokenList()) {
@@ -285,3 +301,6 @@ public class SMLAScanner {
         }
     }
 }
+
+
+

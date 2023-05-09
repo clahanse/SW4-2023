@@ -6,13 +6,17 @@ public class SMLA_AST {
     private static Token currentToken;
     private List<Token> tokens;
     private int numGroups;
+    private List<CommandNode> nodes;
 
     public SMLA_AST(List<Token> tokens) {
         this.tokens = tokens;
         currentTokenIndex = 0;
         currentToken = tokens.get(0);
+        nodes = new ArrayList<>();
     }
-
+    public List<CommandNode> getNodes() {
+        return nodes;
+    }
     public void parseProgram() throws Exception {
         parseCommands();
     }
@@ -33,6 +37,7 @@ public class SMLA_AST {
                         + currentToken.getLineNumber() + ", unexpected: " + currentToken.getValue());
             }
         }
+
     }
 
     // PARSER VARIABLE COMMAND
@@ -73,12 +78,12 @@ public class SMLA_AST {
         int nInteger = Integer.parseInt(nIntegerToken.getValue());
         numGroups = nInteger;
         currentTokenIndex = currentTokenIndex + 2;
-        List<String> identifiers = new ArrayList<>();
+        List<String> nIntegers = new ArrayList<>();
         // check and add groups into identifiers
         for (int i = currentTokenIndex; i < currentTokenIndex + numGroups; i++) {
             Token token = tokens.get(i);
-            if (token.getType().equals(SMLAParser.TokenType.alphanumeric.toString())) {
-                identifiers.add(token.getValue());
+            if (token.getType().equals(SMLAParser.TokenType.n_integer.toString())) {
+                nIntegers.add(token.getValue());
             }
         }
         // add keyword, name, number and groups into node
@@ -86,7 +91,8 @@ public class SMLA_AST {
         node.setKeyword(keyword);
         node.setIdentifier(identifier);
         node.setNInteger(nInteger);
-        node.setIdentifiers(identifiers);
+        node.setNIntegers(nIntegers);
+        nodes.add(node);
         printAST(node);
         currentTokenIndex = currentTokenIndex + (numGroups - 1);
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
@@ -110,6 +116,7 @@ public class SMLA_AST {
             CommandNode.PrefCommandNode node = new CommandNode.PrefCommandNode();
             node.setKeyword(keyword);
             node.setNIntegers(nIntegers);
+            nodes.add(node);
             printAST(node);
         }
         currentTokenIndex = currentTokenIndex + (numGroups - 1);
@@ -132,6 +139,7 @@ public class SMLA_AST {
             CommandNode.VacantCommandNode node = new CommandNode.VacantCommandNode();
             node.setKeyword(keyword);
             node.setIdentifier(identifier);
+            nodes.add(node);
             printAST(node);
         }
         // currentTokenIndex++;
@@ -153,6 +161,7 @@ public class SMLA_AST {
             CommandNode.UsingCommandNode node = new CommandNode.UsingCommandNode();
             node.setKeyword(keyword);
             node.setIdentifier(identifier);
+            nodes.add(node);
             printAST(node);
             currentTokenIndex = currentTokenIndex + 2;
         }
@@ -183,6 +192,7 @@ public class SMLA_AST {
             node.setKeyword(keyword);
             node.setIdentifier(identifier);
             node.setNInteger(nInteger);
+            nodes.add(node);
             printAST(node);
             currentTokenIndex++;
             currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
@@ -213,6 +223,7 @@ public class SMLA_AST {
             CommandNode.ReportCommandNode node = new CommandNode.ReportCommandNode();
             node.setKeyword(keyword);
             node.setIdentifiers(identifiers);
+            nodes.add(node);
             printAST(node);
         }
         currentTokenIndex--;
@@ -239,7 +250,7 @@ public class SMLA_AST {
         } else if (node instanceof CommandNode.SimulationCommandNode) {
             CommandNode.SimulationCommandNode simNode = (CommandNode.SimulationCommandNode) node;
             System.out.println("- Setup Simulation Command: " + simNode.getKeyword() + ", " + simNode.getIdentifier() + ", "
-                    + simNode.getNInteger() + ", " + simNode.getIdentifiers());
+                    + simNode.getNInteger() + ", " + simNode.getNIntegers());
         } else if (node instanceof CommandNode.PrefCommandNode) {
             CommandNode.PrefCommandNode prefNode = (CommandNode.PrefCommandNode) node;
             System.out.println("- Pref Command: " + prefNode.getKeyword() + ", " + prefNode.getNIntegers());
@@ -294,10 +305,10 @@ public class SMLA_AST {
         tokens.add(new Token("phrase", "WITH", "", "", 6));
         tokens.add(new Token("n_integer", "4", "", "", 6));
         tokens.add(new Token("phrase", "AS", "", "", 6));
-        tokens.add(new Token("alphanumeric", "GROUP1", "", "", 6));
-        tokens.add(new Token("alphanumeric", "GROUP2", "", "", 6));
-        tokens.add(new Token("alphanumeric", "GROUP3", "", "", 6));
-        tokens.add(new Token("alphanumeric", "ABC", "", "", 6));
+        tokens.add(new Token("n_integer", "30", "", "", 6));
+        tokens.add(new Token("n_integer", "20", "", "", 6));
+        tokens.add(new Token("n_integer", "30", "", "", 6));
+        tokens.add(new Token("n_integer", "20", "", "", 6));
 
         // Where pref is (10, 20, 30, 40)
         tokens.add(new Token("pref", "WHERE PREF IS", "", "", 7));
@@ -308,7 +319,7 @@ public class SMLA_AST {
 
         // Where vacant is Vacant
         tokens.add(new Token("vacant", "WHERE VACANT IS", "", "", 8));
-        tokens.add(new Token("n_integer", "VACANT", "", "", 8));
+        tokens.add(new Token("n_integer", "50", "", "", 8));
 
         CommandNode node = null;
         System.out.println("\n - AST output: ");
