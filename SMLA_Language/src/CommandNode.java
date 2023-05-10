@@ -6,7 +6,7 @@ public abstract class CommandNode {
         private String keyword;
         private String identifier;
         private int nInteger;
-        private List<String> identifiers;
+        private List<String> nIntegers;
         private List<CommandNode> children = new ArrayList<>();
 
         public void setKeyword(String keyword) {
@@ -25,10 +25,6 @@ public abstract class CommandNode {
             this.nInteger = nInteger;
         }
 
-        public void setIdentifiers(List<String> identifiers) {
-            this.identifiers = identifiers;
-        }
-
         public String getIdentifier() {
             return identifier;
         }
@@ -37,9 +33,14 @@ public abstract class CommandNode {
             return nInteger;
         }
 
-        public List<String> getIdentifiers() {
-            return identifiers;
+        public void setNIntegers(List<String> nIntegers) {
+            this.nIntegers = nIntegers;
         }
+
+        public List<String> getNIntegers() {
+            return nIntegers;
+        }
+
 
         @Override
         public void execute() {
