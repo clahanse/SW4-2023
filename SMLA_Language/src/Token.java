@@ -8,11 +8,15 @@ public class Token {
     private List<String> commands;
     private String variableValue;
 
-    public Token(String type, String value,int lineNumber) {
+    public Token(String type, String value) {
+        this.type = type;
+        this.value = value;
+    }
+
+    public Token(String type, String value, int lineNumber) {
         this.type = type;
         this.value = value;
         this.commands = new ArrayList<>();
-        //  this.commands.add(command);
         this.lineNumber = lineNumber;
     }
 
@@ -32,9 +36,11 @@ public class Token {
     public String getValue() {
         return value;
     }
-    public void setValue(String newValue){
-        this.value=newValue;
+
+    public void setValue(String newValue) {
+        this.value = newValue;
     }
+
     public String getVariableValue() {
         return variableValue;
     }
@@ -54,6 +60,7 @@ public class Token {
     public void setLineNumber(int lineNumber) {
         this.lineNumber = lineNumber;
     }
+
     @Override
     public String toString() {
         if (variableValue == null) {

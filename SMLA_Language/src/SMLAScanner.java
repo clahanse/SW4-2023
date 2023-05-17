@@ -1,10 +1,7 @@
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
-
-import static com.sun.tools.javac.util.StringUtils.toUpperCase;
 
 public class SMLAScanner {
     private Scanner scanner;
@@ -14,9 +11,6 @@ public class SMLAScanner {
     public SMLAScanner(Scanner scanner) { // constructor
         this.scanner = scanner;
         this.tokenList = new ArrayList<>(); // list stores tokens
-    }
-
-    public SMLAScanner() { // constructor
     }
 
     // MAIN FUNCTION SCANNING AND DIVIDING INPUT DATA INTO TOKENS
@@ -64,7 +58,6 @@ public class SMLAScanner {
         }
     }
 
-
     // SCAN SETUP, RUN AND REPORT COMMAND
     public void scanSetupRunReport(Scanner inputScanner, String token) throws Exception {
         String val = String.valueOf(token); // store token value
@@ -87,7 +80,8 @@ public class SMLAScanner {
                     addUniqueToken(tokenList, "report", val, lineNum); // save token "REPORT SIMULATION..."
                 }
             } else {
-                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
+                        + ", expected: simulation");
             }
             scanNextToken(inputScanner, nextToken);
         }
@@ -110,7 +104,8 @@ public class SMLAScanner {
                     }
                 }
             } else {
-                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
+                        + ", expected: is" );
             }
             scanNextToken(inputScanner, nextToken);
         }
@@ -127,7 +122,7 @@ public class SMLAScanner {
             if (val.equals("USING")) {
                 addUniqueToken(tokenList, "using", val, lineNum);
             }
-            if (nextToken.equals("RANDOM")||nextToken.equals("SCHELLING")) {
+            if (nextToken.equals("RANDOM") || nextToken.equals("SCHELLING")) {
                 addUniqueToken(tokenList, "typeMoving", nextToken, lineNum);
             } else {
                 addUniqueToken(tokenList, "alphanumeric", nextToken, lineNum);
@@ -139,29 +134,20 @@ public class SMLAScanner {
     // SCAN VARIABLE COMMAND
     public void scanVariable(Scanner inputScanner, String token) throws Exception {
         String val = extractString(token);
-        if (isAlphanumeric(val)&& !val.equals("setup")&&!val.equals("where")&&
-                !val.equals("run")&&!val.equals("using")&&!val.equals("report")) {
+        if (isAlphanumeric(val) && !val.equals("setup") && !val.equals("where") &&
+                !val.equals("run") && !val.equals("using") && !val.equals("report")) {
             if (!inputScanner.hasNext()) {
-                throw new Exception("\nError on line " + lineNum + " Missing equal '=' or value of variable");
+                throw new Exception("\nError on line " + lineNum + " Missing equal '='");
             }
             String nextToken = inputScanner.next();
             if (!nextToken.equals("=")) {
-                throw new Exception("\nError on line " + lineNum + " Missing equal '='");
+                throw new Exception("\nError on line " + lineNum + " Expected: equal '='");
             }
             if (!inputScanner.hasNext()) {
                 throw new Exception("\nError on line " + lineNum + " Missing value of variable");
             }
-            nextToken = inputScanner.next();
-            if (inputScanner.hasNextInt() || inputScanner.hasNextFloat() || isAlphanumeric(extractString(nextToken))) {
-                addUniqueToken(tokenList, "variable", val, extractString(nextToken), lineNum);
-            } else {
-                throw new Exception("\nError on line " + lineNum + " Invalid value of variable");
-            }
-            if (inputScanner.hasNext()) {
-                throw new Exception("\nError on line " + lineNum + " Invalid value of variable");
-            }
-        } else {
-            throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + token);
+            addUniqueToken(tokenList, "variable", val, lineNum);
+            scanNextToken(inputScanner, nextToken);
         }
     }
 
@@ -170,17 +156,14 @@ public class SMLAScanner {
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             String exactSt = extractString(nextToken);
-            if (isInteger(nextToken)) {
+            if (isInteger(exactSt)) {
                 addUniqueToken(tokenList, "n_integer", exactSt, lineNum);
+            } else if (SMLAParser.isFloat(exactSt)) {
+                addUniqueToken(tokenList, "n_float", exactSt, lineNum);
             } else if (isAlphanumeric(exactSt)) {
-                if (exactSt.equals("RED") || exactSt.equals("GREEN") || exactSt.equals("YELLOW")
-                        || exactSt.equals("CYAN") || exactSt.equals("PINK") || exactSt.equals("BLUE")) {
-                    addUniqueToken(tokenList, "color", exactSt, lineNum);
-                } else if (exactSt.equals("WITH") || exactSt.equals("GROUPS") || exactSt.equals("TICKS")
+                if (exactSt.equals("WITH") || exactSt.equals("GROUPS") || exactSt.equals("TICKS")
                         || exactSt.equals("FOR") || exactSt.equals("MOVE") || exactSt.equals("AS")) {
                     addUniqueToken(tokenList, "phrase", nextToken, lineNum);
-                } else if (isInteger(exactSt)) {
-                    addUniqueToken(tokenList, "n_integer", exactSt, lineNum);
                 } else {
                     addUniqueToken(tokenList, "alphanumeric", exactSt, lineNum);
                 }
@@ -191,7 +174,8 @@ public class SMLAScanner {
             } else if (nextToken.equals("*") || nextToken.equals("/")) {
                 addUniqueToken(tokenList, "multiOperator", nextToken, lineNum);
             } else {
-                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken);
+                throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
+                        + ", expected: number, alphanumeric or operators (+, -, *, /)");
             }
         }
     }
@@ -209,8 +193,6 @@ public class SMLAScanner {
     public static String extractString(String input) {
         // Define the regular expression pattern
         Pattern pattern = Pattern.compile("^[#(\"\']|[:,),\"\']$");
-
-        // Pattern pattern = Pattern.compile("^[#(]|[,:)]$");
         input = pattern.matcher(input).replaceAll("");
         return input;
     }
@@ -234,16 +216,14 @@ public class SMLAScanner {
         return input.toUpperCase();
     }
 
-    // CLASS TOKEN
-
-
     // FUNCTION GETS "tokenList"
     public static List<Token> getTokenList() {
         return tokenList;
     }
 
+    // CHECK SCANNER
     public static void main(String[] args) throws Exception {
-
+        // read input from console
         Scanner scanner = new Scanner(System.in);
         SMLAScanner smlaScanner = new SMLAScanner(scanner);
 
@@ -263,6 +243,7 @@ public class SMLAScanner {
         getTokenList().clear(); // reset the TokenList before scanning new input
         smlaScanner.tokenizeInput(input.toString());
 
+        // read input from file
      /*  File inputFile = new File("C:\\Users\\HAI\\OneDrive\\Desktop\\input.txt");
         if (!inputFile.exists()) {
             throw new Exception("Input file does not exist.");
@@ -301,6 +282,8 @@ public class SMLAScanner {
         }
     }
 }
+
+
 
 
 

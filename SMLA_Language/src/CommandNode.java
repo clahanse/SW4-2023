@@ -2,11 +2,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class CommandNode {
+   // Setup simulation node
     static class SimulationCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
         private int nInteger;
-        private List<String> nIntegers;
+        private List<String> nFloats;
         private List<CommandNode> children = new ArrayList<>();
 
         public void setKeyword(String keyword) {
@@ -33,47 +34,29 @@ public abstract class CommandNode {
             return nInteger;
         }
 
-        public void setNIntegers(List<String> nIntegers) {
-            this.nIntegers = nIntegers;
+        public void setNFloats(List<String> nFloats) {
+            this.nFloats = nFloats;
         }
 
-        public List<String> getNIntegers() {
-            return nIntegers;
+        public List<String> getNFloats() {
+            return nFloats;
         }
-
 
         @Override
         public void execute() {
-            // execute simulation command
-        }
-
-        public void addChild(CommandNode child) {
-            children.add(child);
         }
 
         public List<CommandNode> getChildren() {
             return children;
         }
-
     }
 
+    // Variable node
     static class VariableCommandNode extends CommandNode {
         private String identifier;
         private int nInteger;
         private List<String> identifiers;
         private List<CommandNode> children;
-
-        public void setIdentifier(String identifier) {
-            this.identifier = identifier;
-        }
-
-        public int getNInteger() {
-            return nInteger;
-        }
-
-        public String getIdentifier() {
-            return identifier;
-        }
 
         public List<String> getIdentifiers() {
             return identifiers;
@@ -83,17 +66,12 @@ public abstract class CommandNode {
             this.identifiers = identifiers;
         }
 
-        public void setNInteger(int nInteger) {
-            this.nInteger = nInteger;
-        }
-
         public VariableCommandNode() {
             children = new ArrayList<>();
         }
 
         @Override
         public void execute() {
-            // execute run command
         }
 
         @Override
@@ -102,28 +80,21 @@ public abstract class CommandNode {
         }
     }
 
+    // Pref node
     static class PrefCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
-        private int nInteger;
 
-        private List<String> nIntegers;
+        private List<String> nFloats;
 
-        public void setNIntegers(List<String> nIntegers) {
-            this.nIntegers = nIntegers;
+        public void setNFloats(List<String> nFloats) {
+            this.nFloats = nFloats;
         }
 
-        public List<String> getNIntegers() {
-            return nIntegers;
+        public List<String> getnFloats() {
+            return nFloats;
         }
 
-        public void setIdentifier(String identifier) {
-            this.identifier = identifier;
-        }
-
-        public String getIdentifier() {
-            return identifier;
-        }
         public void setKeyword(String keyword) {
             this.keyword = keyword;
         }
@@ -131,9 +102,9 @@ public abstract class CommandNode {
         public String getKeyword() {
             return keyword;
         }
+
         @Override
         public void execute() {
-            // execute report command
         }
 
         @Override
@@ -142,10 +113,10 @@ public abstract class CommandNode {
         }
     }
 
+    // Vacant node
     static class VacantCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
-        private int nInteger;
 
         public void setIdentifier(String identifier) {
             this.identifier = identifier;
@@ -154,6 +125,7 @@ public abstract class CommandNode {
         public String getIdentifier() {
             return identifier;
         }
+
         public void setKeyword(String keyword) {
             this.keyword = keyword;
         }
@@ -161,9 +133,9 @@ public abstract class CommandNode {
         public String getKeyword() {
             return keyword;
         }
+
         @Override
         public void execute() {
-            // execute run command
         }
 
         @Override
@@ -172,16 +144,19 @@ public abstract class CommandNode {
         }
     }
 
+    // Using node
     static class UsingCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
-        private int nInteger;
+
         public void setKeyword(String keyword) {
             this.keyword = keyword;
         }
+
         public String getKeyword() {
             return keyword;
         }
+
         public void setIdentifier(String identifier) {
             this.identifier = identifier;
         }
@@ -192,7 +167,6 @@ public abstract class CommandNode {
 
         @Override
         public void execute() {
-            // execute run command
         }
 
         @Override
@@ -201,10 +175,12 @@ public abstract class CommandNode {
         }
     }
 
+    // Run node
     static class RunCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
         private int nInteger;
+
         public void setKeyword(String keyword) {
             this.keyword = keyword;
         }
@@ -212,6 +188,7 @@ public abstract class CommandNode {
         public String getKeyword() {
             return keyword;
         }
+
         public void setIdentifier(String identifier) {
             this.identifier = identifier;
         }
@@ -239,6 +216,7 @@ public abstract class CommandNode {
         }
     }
 
+    // Report node
     static class ReportCommandNode extends CommandNode {
         private String keyword;
         private String identifier;
@@ -252,6 +230,7 @@ public abstract class CommandNode {
         public String getKeyword() {
             return keyword;
         }
+
         public void setIdentifiers(List<String> identifiers) {
             this.identifiers = identifiers;
         }
@@ -260,17 +239,12 @@ public abstract class CommandNode {
             return identifiers;
         }
 
-        public String getIdentifier() {
-            return identifier;
-        }
-
         public void setIdentifier(String identifier) {
             this.identifier = identifier;
         }
 
         @Override
         public void execute() {
-            // execute report command
         }
 
         @Override

@@ -1,6 +1,8 @@
-import java.io.IOException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 public class SMLAParser {
 
@@ -32,10 +34,10 @@ public class SMLAParser {
         end_command("'end of line'"),
         EOF("'end of List'");
 
-
         public boolean equals(String value) {
             return Arrays.asList(this.getValues()).contains(value);
         }
+
         private final String[] values;
 
         TokenType(String... values) {
@@ -45,10 +47,6 @@ public class SMLAParser {
         public String[] getValues() {
             return values;
         }
-    }
-
-    // CONSTRUCTOR
-    public SMLAParser() {
     }
 
     // CONSTRUCTOR WITH PARAMETER
@@ -76,30 +74,34 @@ public class SMLAParser {
                 case "report" -> parseReportSimulation();
                 default -> {
                     throw new IllegalArgumentException("\nInvalid statement type at line: "
-                            + currentToken.getLineNumber() + ", unexpected: " + currentToken.getValue());
+                            + currentToken.getLineNumber() + ", unexpected: " + currentToken.getValue()
+                            + ", expected: alphanumeric, setup, where, using, run or report");
                 }
             }
         }
     }
 
     // 1. PARSER VARIABLE
-    private void parseVariable() throws ParseException {
+    private void parseVariable() throws Exception {
         matchType(TokenType.variable);
-        matchVariableValue(TokenType.variable);
+        currentTokenIndex++;
+        currentToken = tokens.get(currentTokenIndex);
+        prefGroup(tokens, currentToken);
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Variable' parsed successfully");
     }
 
-    // 2. PARSER "SETUP SIMULATION '(NAME)' WITH 'GROUPS' AS (Group1, Group2, Group3)"
+    // 2. PARSER "SETUP SIMULATION '(NAME)' WITH 'numberGroups' AS (Group1, Group2, Group3)"
     private void parseSetupSimulation() throws Exception {
         int i = 0;
         matchType(TokenType.simulation); // match 'SETUP SIMULATION'
         matchKeywordValue(TokenType.simulation);
         matchType(TokenType.alphanumeric); // match 'NAME'
-        matchStringValue(TokenType.alphanumeric);
+        assignVariable(tokens, currentToken);
+        // matchStringValue(TokenType.alphanumeric);
         matchType(TokenType.phrase); // match 'WITH'
         matchPhraseValue(TokenType.phrase);
-        String currentValue = tokens.get(currentTokenIndex).getValue(); // match 'GROUPS'
+        String currentValue = tokens.get(currentTokenIndex).getValue(); // match 'numberGroups'
         if (isInteger(currentValue)) { // GROUPS is integer
             matchType(TokenType.n_integer);
             matchIntegerValue(TokenType.n_integer);
@@ -107,18 +109,30 @@ public class SMLAParser {
         } else { // GROUPS is variable
             assignVariable(tokens, currentToken); // assign value to variable
         }
-        matchType(TokenType.phrase); // match 'AS'
+        matchType(TokenType.phrase); // match 'AS or GROUPS'
         matchPhraseValue(TokenType.phrase);
-        while (!currentToken.getType().equals("end_command")) { // match 'Group1, Group2...'
-            prefGroup(tokens, currentToken);
-            i++;
+        String previous_currentValue = tokens.get(currentTokenIndex - 1).getValue();
+        if (previous_currentValue.equals("GROUPS")) {
+            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+            System.out.println("'Vacant' parsed successfully");
+        } else if (previous_currentValue.equals("AS")) {
+            String returnValue = "";
+            float sum = 0.0F;
+            while (!currentToken.getType().equals("end_command")) { // match 'Group1, Group2...'
+                returnValue = prefGroup(tokens, currentToken);
+                i++;
+                sum = sum + Float.parseFloat(returnValue);
+                if (sum > 100) {
+                    throw new Exception("Sum of percent groups <= 100" + ", line " + currentToken.getLineNumber());
+                }
+            }
+            if (i != totalGroups) { // check number of groups
+                throw new ParseException("\nInvalid number of groups, line " +
+                        currentToken.getLineNumber(), currentToken.getLineNumber());
+            }
+            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+            System.out.println("'Setup Simulation' parsed successfully");
         }
-        if (i != totalGroups) { // check number of groups
-            throw new ParseException("\nInvalid number of groups, line " +
-                    currentToken.getLineNumber(), currentToken.getLineNumber());
-        }
-        currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
-        System.out.println("'Setup Simulation' parsed successfully");
     }
 
     // 3. PARSER "WHERE PREF IS (pref1, pref2, pref3)"
@@ -145,7 +159,6 @@ public class SMLAParser {
         String currentValue = tokens.get(currentTokenIndex).getValue();
         while (!currentToken.getType().equals("end_command")) { // match 'vacant'
             prefGroup(tokens, currentToken);
-
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Vacant' parsed successfully");
@@ -166,24 +179,28 @@ public class SMLAParser {
 
     // 6. PARSER "RUN SIMULATION 'NAME' FOR NUMBER TICKS"
     private void parseRunSimulation() throws Exception {
-        checkTokens(tokens, currentTokenIndex, 5); // check number of tokens in command
         matchType(TokenType.run); // match 'RUN SIMULATION'
         matchKeywordValue(TokenType.run);
         matchType(TokenType.alphanumeric); // match 'NAME'
-        matchNameSimulation(tokens, currentToken);
-        matchType(TokenType.phrase); // match 'FOR'
-        matchPhraseValue(TokenType.phrase);
-        String currentValue = tokens.get(currentTokenIndex).getValue();
-        if (isInteger(currentValue)) { // number is integer
-            matchType(TokenType.n_integer);
-            matchIntegerValue(TokenType.n_integer);
-        } else { // number is variable
-            assignVariable(tokens, currentToken);
+        assignVariable(tokens, currentToken);
+        if (tokens.get(currentTokenIndex).getType().equals("end_command")) {
+            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+            System.out.println("'Run simulation' parsed successfully");
+        } else {
+            matchType(TokenType.phrase); // match 'FOR'
+            matchPhraseValue(TokenType.phrase);
+            String currentValue = tokens.get(currentTokenIndex).getValue();
+            if (isInteger(currentValue)) { // number is integer
+                matchType(TokenType.n_integer);
+                matchIntegerValue(TokenType.n_integer);
+            } else { // number is variable
+                assignVariable(tokens, currentToken);
+            }
+            matchType(TokenType.phrase); // match 'TICKS'
+            matchPhraseValue(TokenType.phrase);
+            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+            System.out.println("'Run simulation' parsed successfully");
         }
-        matchType(TokenType.phrase); // match 'TICKS'
-        matchPhraseValue(TokenType.phrase);
-        currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
-        System.out.println("'Run simulation' parsed successfully");
     }
 
     // 7. PARSER "REPORT SIMULATION 'NAME1', 'NAME2'..."
@@ -192,11 +209,12 @@ public class SMLAParser {
         matchKeywordValue(TokenType.report);
         while (!currentToken.getType().equals("end_command")) { // match name
             matchType(TokenType.alphanumeric);
-            matchNameSimulation(tokens, currentToken);
+            assignVariable(tokens, currentToken);
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Report simulation' parsed successfully");
     }
+
     // II. GROUP OF MATCHING FUNCTIONS
     // 1. MATCH TYPE OF THE INPUT TOKEN AND EXPECTED TYPE
     private void matchType(TokenType expectedType) throws ParseException {
@@ -237,31 +255,10 @@ public class SMLAParser {
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
-    // 4. MATCH THE VALUE OF STRING
-    private void matchStringValue(TokenType expectedType) throws ParseException {
-        // check the value is NAME
-        String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
-        if (currentToken.getType().equals("alphanumeric")) {
-            if (!isAlphanumeric(currentToken.getValue().trim())) {
-                handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
-            }
-        }
-        if (tokens.get(currentTokenIndex - 1).getValue().equals("SETUP")) { // set simulation name
-            nameSimulation = currentToken.getValue();
-        }
-        // add node to the list of nodes and token to the list of tokens
-        addNodeAndToken(currentToken);
-        // advance to the next token
-        currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
-    }
-
-
-    // 5. MATCH THE VALUE OF PHRASES "WITH", "FOR", "TICKS"...
+    // 4. MATCH THE VALUE OF PHRASES "WITH", "FOR", "TICKS"...
     private void matchPhraseValue(TokenType expectedType) throws ParseException {
         String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
         int previousIndex1 = currentTokenIndex - 1;
-        String type_pre_index1 = tokens.get(previousIndex1).getType();
-        String value_pre_index1 = tokens.get(previousIndex1).getValue();
         int previousIndex2 = currentTokenIndex - 2;
         String type_pre_index2 = tokens.get(previousIndex2).getType();
         String value_pre_index2 = tokens.get(previousIndex2).getValue();
@@ -273,7 +270,7 @@ public class SMLAParser {
         }
         // check AS in command SETUP SIMULATION (NAME) WITH NUMBER 'AS' (Group1, Group2...)
         if (value_pre_index2.equals("WITH")) {
-            if (!currentToken.getValue().trim().equals("AS")) {
+            if (!currentToken.getValue().trim().equals("AS") && !currentToken.getValue().trim().equals("GROUPS")) {
                 handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
             }
         }
@@ -301,7 +298,7 @@ public class SMLAParser {
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
-    // 6. MATCH INTEGER
+    // 5. MATCH INTEGER
     private void matchIntegerValue(TokenType expectedType) throws ParseException {
         // check the value is an integer
         String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
@@ -309,6 +306,8 @@ public class SMLAParser {
             if (!isInteger(currentToken.getValue().trim())) {
                 handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
             }
+        } else {
+            handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
         }
         // add node to the list of nodes and token to the list of tokens
         currentToken.getCommands().add(nameSimulation);
@@ -317,18 +316,6 @@ public class SMLAParser {
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
-    // 7. MATCH VALUE OF VARIABLE
-    private void matchVariableValue(TokenType expectedType) throws ParseException {
-        String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
-        if (isInteger(currentToken.getVariableValue()) || isAlphanumeric(currentToken.getVariableValue())) {
-            // add node to the list of nodes and token to the list of tokens
-            addNodeAndToken(currentToken);
-            // advance to the next token
-            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
-        } else {
-            handleSyntaxError(currentToken.getValue(), expectedValue, currentToken.getLineNumber());
-        }
-    }
     // III. OTHER FUNCTIONS
     // Move to next token
     private static int advanceToNextToken(List<Token> tokens, int currentTokenIndex) {
@@ -338,7 +325,7 @@ public class SMLAParser {
             currentToken = tokens.get(currentTokenIndex);
         } else {
             // reached the end of the token stream
-            currentToken = new Token("EOF", "","","",0);
+            currentToken = new Token("EOF", "", "", "", 0);
         }
         return currentTokenIndex;
     }
@@ -365,44 +352,61 @@ public class SMLAParser {
     }
 
     // Set pref for group
-    private void prefGroup(List<Token> tokens, Token currentToken) throws Exception {
+    private String prefGroup(List<Token> tokens, Token currentToken) throws Exception {
+        String returnValue = "";
         String currentValue = currentToken.getValue();
-        int newValue = 0;
-        // calculation (integer), (integer +|- variable), (integer +|- integer)
-        if (isInteger(currentValue)) { // check token value is integer, fx. 7
-            if (Integer.parseInt(currentValue) == 0) {
-                throw new Exception("\nPref isn't zero, line " + currentToken.getLineNumber());
+        float newValue = 0;
+        // calculation (float), (float +|-|*|/ variable), (float +|-|*|/ float)
+        if (isFloat(currentValue)) { // check token value is a float, fx. 7.0
+            if (Float.parseFloat(currentValue) == 0) {
+                throw new Exception("\nInvalid value: can't be zero, line " + currentToken.getLineNumber());
             }
-            if (!isOperator(tokens.get(currentTokenIndex + 1).getValue())) { // check next token isn't '+' or '-'
+            if (!isOperator(tokens.get(currentTokenIndex + 1).getValue())) { // check next token isn't '+,-,*,/'
                 currentToken.getCommands().add(nameSimulation);
-                addNodeAndToken(currentToken);  // add token into the list (5)
-            } else {  // if exist '+' or '-' after current token, fx. 7 +
-                newValue = Integer.parseInt(currentValue);
+                returnValue = currentValue;
+                if (tokens.get(currentTokenIndex - 1).getType().equals("variable")) {
+                    tokens.get(currentTokenIndex - 1).setVariableValue(currentValue);
+                    addNodeAndToken(tokens.get(currentTokenIndex - 1));
+                } else {
+                    addNodeAndToken(new Token("n_float", currentValue, nameSimulation, "",
+                            tokens.get(currentTokenIndex).getLineNumber()));
+                }
+            } else {  // if exist '+,-,*,/' after current token
+                newValue = Float.parseFloat(currentValue);
                 String nextValue = (tokens.get(currentTokenIndex + 2).getValue());
-                if (!isInteger(tokens.get(currentTokenIndex + 2).getValue())) { // after operator is variable, fx. 7 + x
-                    performMathOperation1(tokens, currentTokenIndex, nextValue, newValue);
+                if (!isFloat(tokens.get(currentTokenIndex + 2).getValue())) { // after operator is variable, fx. 7.0 + x
+                    returnValue = performMathOperation1(tokens, currentTokenIndex, nextValue, newValue);
                     currentTokenIndex += 2;
-                } else { // after the integer is an integer,
-                    performMathOperation3(currentTokenIndex, newValue, Integer.parseInt(nextValue));
+                } else { // after operator is a float,
+                    returnValue = performMathOperation3(currentTokenIndex, newValue, Float.parseFloat(nextValue));
                     currentTokenIndex += 2;
                 }
             }
-            // calculation (variable), (variable +|- variable), (variable +|- integer)
+            // calculation (variable), (variable +|-|*|/ variable), (variable +|-|*|/ float)
         } else if (isAlphanumeric(currentValue)) { // check token is variable, fx. y
             boolean found = false;
             int lineNum = currentToken.getLineNumber();
             for (Token t : tokens) {
                 if (t.getValue().equals(currentValue) && t.getType().equals("variable")) { // search variable in the list
-                    newValue = Integer.parseInt(t.getVariableValue()); // get variable value from list
-                    if (!isOperator(tokens.get(currentTokenIndex + 1).getValue())) { // check operator after variable
-                        addNodeAndToken(new Token("n_integer", t.getVariableValue(), nameSimulation,"", lineNum));
-                    } else { // exist operator after variable '+' or '-', fx. y +
-                        String nextValue = (tokens.get(currentTokenIndex + 2).getValue());
-                        if (!isInteger(tokens.get(currentTokenIndex + 2).getValue())) { // exist variable after operator,
-                            performMathOperation1(tokens, currentTokenIndex, nextValue, newValue);
-                            currentTokenIndex += 2;
+                    float variableValue = Float.parseFloat(t.getVariableValue()); // convert to float
+
+                    newValue = variableValue; // get variable value from t token
+                    if (!isOperator(tokens.get(currentTokenIndex + 1).getValue())) { // don't exist operator after variable
+                        returnValue = Float.toString(variableValue);
+                        if (tokens.get(currentTokenIndex - 1).getType().equals("variable")) {
+                            tokens.get(currentTokenIndex - 1).setVariableValue(returnValue);
+                            addNodeAndToken(tokens.get(currentTokenIndex - 1));
                         } else {
-                            performMathOperation3(currentTokenIndex, newValue, Integer.parseInt(nextValue));
+                            addNodeAndToken(new Token("n_float", Float.toString(variableValue),
+                                    nameSimulation, "", lineNum));
+                        }
+                    } else { // exist operator after variable '+,-,*,/', fx. y +
+                        String nextValue = (tokens.get(currentTokenIndex + 2).getValue()); // get value after operator
+                        if (!isFloat(tokens.get(currentTokenIndex + 2).getValue())) { // exist variable after operator,
+                            returnValue = performMathOperation1(tokens, currentTokenIndex, nextValue, newValue);
+                            currentTokenIndex += 2;
+                        } else { // after operator is float
+                            returnValue = performMathOperation3(currentTokenIndex, newValue, Float.parseFloat(nextValue));
                             currentTokenIndex += 2;
                         }
                     }
@@ -411,52 +415,96 @@ public class SMLAParser {
                 }
             }
             if (!found) {
-                throw new Exception("\nVariable " + currentValue + " not found in list, line "
-                        + currentToken.getLineNumber());
+                System.out.println(" - New variable: " + tokens.get(currentTokenIndex - 1).getValue());
+                if (tokens.get(currentTokenIndex - 1).getType().equals("variable")) {
+                    tokens.get(currentTokenIndex - 1).setVariableValue(currentToken.getValue());
+                    addNodeAndToken(tokens.get(currentTokenIndex - 1));
+                }
             }
         }
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+        return returnValue;
     }
 
     // Match operator in pref
-    private void performMathOperation1(List<Token> tokens, int currentTokenIndex,
-                                       String nextValue, int newValue) throws Exception {
-        for (Token t1 : tokens) {
-            if (t1.getValue().equals(nextValue) && t1.getType().equals("variable")) {
-                performMathOperation2(t1, currentTokenIndex, newValue);
+    private String performMathOperation1(List<Token> tokens, int currentTokenIndex,
+                                         String nextValue, float newValue) throws Exception {
+        String returnValue = "";
+        for (Token t2 : tokens) {
+            if (t2.getValue().equals(nextValue) && t2.getType().equals("variable")) { // search next variable in the list
+                returnValue = performMathOperation2(t2, currentTokenIndex, newValue);
             }
         }
+        return returnValue;
     }
 
-    private void performMathOperation2(Token t1, int currentTokenIndex, int newValue) throws Exception {
-        if (tokens.get(currentTokenIndex + 1).getValue().equals("+")) {
-            newValue += Integer.parseInt(t1.getVariableValue()); // y + z
-        } else {
-            newValue -= Integer.parseInt(t1.getVariableValue()); // y - z
+    // Calculation two variables
+    private String performMathOperation2(Token t2, int currentTokenIndex, float newValue) throws Exception {
+        String returnValue = "";
+        float variableValue = Float.parseFloat(t2.getVariableValue()); // convert value of next variable to float (t2)
+        if (tokens.get(currentTokenIndex + 1).getValue().equals("+")) { // check '+' after the first variable (t)
+            newValue += variableValue; // y + z
+        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("-")) {
+            newValue -= variableValue; // y - z
             if (newValue <= 0) {
-                throw new Exception("\nInvalid Pref: zero or negative, line " + currentToken.getLineNumber());
+                throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
             }
+        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("*")) {
+            newValue = newValue * variableValue; // y * z
+        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("/")) {
+            if (variableValue == 0) {
+                throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+            }
+            newValue = newValue / variableValue; // y / z
         }
-        int lineNum=tokens.get(currentTokenIndex).getLineNumber();
-        addNodeAndToken(new Token("n_integer", String.valueOf(newValue), nameSimulation,"", lineNum));
+        float newValue1 = (float) (Math.round(newValue * 10.0) / 10.0);
+        int lineNum = tokens.get(currentTokenIndex).getLineNumber();
+        returnValue = String.valueOf(newValue1);
+        if (tokens.get(currentTokenIndex - 1).getType().equals("variable")) {
+            tokens.get(currentTokenIndex - 1).setVariableValue(returnValue);
+            addNodeAndToken(tokens.get(currentTokenIndex - 1));
+        } else {
+            addNodeAndToken(new Token("n_float", String.valueOf(newValue1),
+                    nameSimulation, "", lineNum));
+        }
+        return returnValue;
     }
 
-    private void performMathOperation3(int currentTokenIndex, int newValue, int nextValue) throws Exception {
-        if (tokens.get(currentTokenIndex + 1).getValue().equals("+")) {
-            newValue += Integer.parseInt(String.valueOf(nextValue)); // y + z
-        } else {
-            newValue -= Integer.parseInt(String.valueOf(nextValue)); // y - z
+    // Calculation one variable and one number
+    private String performMathOperation3(int currentTokenIndex, float newValue, float nextValue) throws Exception {
+        String returnValue = "";
+        String nextValue1 = String.valueOf(tokens.get(currentTokenIndex + 1).getValue()).trim();
+        if (nextValue1.equals("+")) {
+            newValue += nextValue; // y + 5
+        } else if (nextValue1.equals("-")) {
+            newValue -= nextValue; // y - 5
             if (newValue <= 0) {
-                throw new Exception("\nInvalid Pref: zero or negative, line " + currentToken.getLineNumber());
+                throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
             }
+        } else if (nextValue1.equals("*")) {
+            newValue = newValue * nextValue; // y * 5
+        } else if (nextValue1.equals("/")) {
+            if (nextValue == 0) {
+                throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+            }
+            newValue = newValue / nextValue; // y / 5
         }
-        int lineNum=tokens.get(currentTokenIndex).getLineNumber();
-        addNodeAndToken(new Token("n_integer", String.valueOf(newValue), nameSimulation,"", lineNum));
+        float newValue1 = (float) (Math.round(newValue * 10.0) / 10.0);
+        int lineNum = tokens.get(currentTokenIndex).getLineNumber();
+        returnValue = String.valueOf(newValue1);
+        if (tokens.get(currentTokenIndex - 1).getType().equals("variable")) {
+            tokens.get(currentTokenIndex - 1).setVariableValue(returnValue);
+            addNodeAndToken(tokens.get(currentTokenIndex - 1));
+        } else {
+            addNodeAndToken(new Token("n_float", String.valueOf(newValue1),
+                    nameSimulation, "", lineNum));
+        }
+        return returnValue;
     }
 
     // Check string is operator
     private boolean isOperator(String s) {
-        if (s.equals("+") || s.equals("-")) {
+        if (s.equals("+") || s.equals("-") || s.equals("*") || s.equals("/")) {
             return true;
         } else {
             return false;
@@ -465,21 +513,24 @@ public class SMLAParser {
 
     // Assign value to variable
     public void assignVariable(List<Token> tokens, Token currentToken) throws Exception {
-        int lineNum=currentToken.getLineNumber();
+        int lineNum = currentToken.getLineNumber();
         String typ = "";
         boolean isNewVariable = true;
         for (Token t : tokens) {
             if (t.getValue().equals(currentToken.getValue()) && t.getType().equals("variable")) {
-                if (isInteger(t.getVariableValue())) {
+                if (isInteger(t.getVariableValue()) || isFloat(t.getVariableValue())) {
                     typ = "n_integer";
+                    String currentValue = String.valueOf(Math.round(Float.parseFloat(t.getVariableValue())));
+                    addNodeAndToken(new Token(typ, currentValue, "", "", lineNum));
+                    int previousIndex1 = currentTokenIndex - 1;
+                    String value_pre_index1 = tokens.get(previousIndex1).getValue();
+                    if (value_pre_index1.equals("WITH") || value_pre_index1.equals("IS")) {
+                        totalGroups = Integer.parseInt(currentValue);
+                    }
                 } else {
                     typ = "alphanumeric";
-                }
-                addNodeAndToken(new Token(typ, String.valueOf(t.getVariableValue()),"","",lineNum));
-                int previousIndex1 = currentTokenIndex - 1;
-                String value_pre_index1 = tokens.get(previousIndex1).getValue();
-                if (value_pre_index1.equals("WITH") || value_pre_index1.equals("IS")) {
-                    totalGroups = Integer.parseInt(t.getVariableValue());
+                    String currentValue = t.getVariableValue();
+                    addNodeAndToken(new Token(typ, currentValue, "", "", lineNum));
                 }
                 currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
                 isNewVariable = false;
@@ -487,34 +538,23 @@ public class SMLAParser {
             }
         }
         if (isNewVariable) {
-            System.out.println("New name: "+currentToken.getValue());
             currentToken.getCommands().add(nameSimulation);
             addNodeAndToken(currentToken);
             currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         }
     }
 
-    // Match simulation name in report
-    public void matchNameSimulation(List<Token> tokens, Token currentToken) throws Exception {
-        if (!tokens.contains(currentToken)) {
-            throw new Exception("\nToken " + currentToken + " not found in list, line " +
-                    currentToken.getLineNumber());
-        }
+    public static boolean matchNameSimulation(List<Token> tokens, String nameSimulation) throws Exception {
         int i = 0;
-        String currentValue = currentToken.getValue();
         for (Token t : tokens) {
-            if (t.getValue().equals(currentValue)) {
+            if (t.getValue().equals(nameSimulation)) {
                 i++;
             }
         }
         if (i < 2) {
-            throw new Exception("\nInvalid name of simulation, line " + currentToken.getLineNumber());
-        } else {
-            // add node to the list of nodes and token to the list of tokens
-            addNodeAndToken(currentToken);
-            // advance to the next token
-            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
+            throw new Exception("\nInvalid name of simulation report");
         }
+        return true;
     }
 
     // Get number of tokens in the command
@@ -553,6 +593,15 @@ public class SMLAParser {
         }
     }
 
+    public static boolean isFloat(String str) {
+        try {
+            Float.parseFloat(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     // Check string consists of only alphabets and numbers
     public static boolean isAlphanumeric(String str) {
         return str != null && str.matches("^[a-zA-Z0-9]+$");
@@ -569,7 +618,6 @@ public class SMLAParser {
 
     // Add node and token to the list
     private void addNodeAndToken(Token currentToken) throws ParseException {
-        // add the current token to the list of tokens
         tokenList.add(currentToken);
     }
 
@@ -578,65 +626,68 @@ public class SMLAParser {
         String errorMessage = "\nSyntax error on line %d: unexpected token '%s', expected '%s'";
         throw new ParseException(String.format(errorMessage, lineNumber, unexpectedToken, expectedToken), lineNumber);
     }
+
     public static List<Token> getTokenList() {
         return tokenList;
     }
-
 
     // CHECK PROGRAM
     public static void main(String[] args) throws Exception {
         List<Token> tokens = new ArrayList<>();
         // Output from Scanner
         // Variable pref1 = 10, vacant = 50
-      /* tokens.add(new Token("variable","PREF1", "10","", 1));
-        tokens.add(new Token("end_command","end of command", "","", 1));
-        tokens.add(new Token("variable","VACANT", "50","", 2));
-        tokens.add(new Token("end_command","end of command", "","", 2));*/
+        tokens.add(new Token("variable", "GROUP1", "30", "", 1));
+        tokens.add(new Token("end_command", "end of command", "", "", 1));
+        tokens.add(new Token("variable", "GROUP2", "25", "", 2));
+        tokens.add(new Token("end_command", "end of command", "", "", 2));
+        tokens.add(new Token("variable", "GROUP3", "20", "", 3));
+        tokens.add(new Token("end_command", "end of command", "", "", 3));
+        tokens.add(new Token("variable", "ABC", "25", "", 4));
+        tokens.add(new Token("end_command", "end of command", "", "", 4));
 
         // Run simulation Example1 FOR 50 TICKS
-        tokens.add(new Token("run","RUN SIMULATION", "","", 3));
-        tokens.add(new Token("alphanumeric","EXAMPLE1", "","", 3));
-        tokens.add(new Token("phrase","FOR", "","", 3));
-        tokens.add(new Token("n_integer","50", "","", 3));
-        tokens.add(new Token("phrase","TICKS", "","", 3));
-        tokens.add(new Token("end_command","end of command", "","", 3));
+        tokens.add(new Token("run", "RUN SIMULATION", "", "", 5));
+        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 5));
+        tokens.add(new Token("phrase", "FOR", "", "", 5));
+        tokens.add(new Token("n_integer", "50", "", "", 5));
+        tokens.add(new Token("phrase", "TICKS", "", "", 5));
+        tokens.add(new Token("end_command", "end of command", "", "", 5));
 
         // Report simulation Example1
-      /*  tokens.add(new Token("report","REPORT SIMULATION", "","", 4));
-        tokens.add(new Token("alphanumeric","EXAMPLE1", "","", 4));
-        tokens.add(new Token("end_command","end of command", "","", 4));*/
+        tokens.add(new Token("report", "REPORT SIMULATION", "", "", 6));
+        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 6));
+        tokens.add(new Token("end_command", "end of command", "", "", 6));
 
         // Using random move
-      /*  tokens.add(new Token("using","USING", "","", 5));
-        tokens.add(new Token("typeMoving","RANDOM", "","", 5));
-        tokens.add(new Token("phrase","MOVE", "","", 5));
-        tokens.add(new Token("end_command","end of command", "","", 5));*/
+        tokens.add(new Token("using", "USING", "", "", 7));
+        tokens.add(new Token("typeMoving", "RANDOM", "", "", 7));
+        tokens.add(new Token("phrase", "MOVE", "", "", 7));
+        tokens.add(new Token("end_command", "end of command", "", "", 7));
 
         // Setup simulation (Example1) WITH 4 AS (Group1, Group2, Group3, ABC)
-        tokens.add(new Token("simulation","SETUP SIMULATION", "","", 6));
-        tokens.add(new Token("alphanumeric","EXAMPLE1", "","", 6));
-        tokens.add(new Token("phrase","WITH", "","", 6));
-        tokens.add(new Token("n_integer","4", "","", 6));
-        tokens.add(new Token("phrase","AS", "","", 6));
-        tokens.add(new Token("alphanumeric","GROUP1", "","", 6));
-        tokens.add(new Token("alphanumeric","GROUP2", "","", 6));
-        tokens.add(new Token("alphanumeric","GROUP3", "","", 6));
-        tokens.add(new Token("alphanumeric","ABC", "","", 6));
-        tokens.add(new Token("end_command","end of command", "","", 6));
+        tokens.add(new Token("simulation", "SETUP SIMULATION", "", "", 8));
+        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 8));
+        tokens.add(new Token("phrase", "WITH", "", "", 8));
+        tokens.add(new Token("n_integer", "4", "", "", 8));
+        tokens.add(new Token("phrase", "AS", "", "", 8));
+        tokens.add(new Token("alphanumeric", "GROUP1", "", "", 8));
+        tokens.add(new Token("alphanumeric", "GROUP2", "", "", 8));
+        tokens.add(new Token("alphanumeric", "GROUP3", "", "", 8));
+        tokens.add(new Token("alphanumeric", "ABC", "", "", 8));
+        tokens.add(new Token("end_command", "end of command", "", "", 8));
 
         // Where pref is (10, 20, 30, 40)
-     /* tokens.add(new Token("pref","WHERE PREF IS", "","", 7));
-        tokens.add(new Token("n_integer","10", "","", 7));
-        tokens.add(new Token("n_integer","20", "","", 7));
-        tokens.add(new Token("n_integer","30", "","", 7));
-        tokens.add(new Token("n_integer","40", "","", 7));
-        tokens.add(new Token("end_command","end of command", "","", 7));*/
+        tokens.add(new Token("pref", "WHERE PREF IS", "", "", 9));
+        tokens.add(new Token("n_integer", "10", "", "", 9));
+        tokens.add(new Token("n_integer", "20", "", "", 9));
+        tokens.add(new Token("n_integer", "30", "", "", 9));
+        tokens.add(new Token("n_integer", "40", "", "", 9));
+        tokens.add(new Token("end_command", "end of command", "", "", 9));
 
         // Where vacant is Vacant
-    /*   tokens.add(new Token("vacant","WHERE VACANT IS", "","", 8));
-        tokens.add(new Token("alphanumeric","VACANT", "","", 8));
-         tokens.add(new Token("end_command","end of command", "","", 8));*/
-
+        tokens.add(new Token("vacant", "WHERE VACANT IS", "", "", 10));
+        tokens.add(new Token("n_integer", "65", "", "", 10));
+        tokens.add(new Token("end_command", "end of command", "", "", 10));
 
         try {
             SMLAParser parser = new SMLAParser(tokens);
@@ -654,7 +705,7 @@ public class SMLAParser {
 
         System.out.println("\n*** Token list from Parser ");
 
-        int j=1;
+        int j = 1;
         for (Token token : getTokenList()) {
             if (token.getType().equals("variable")) {
                 System.out.println(j + "-type: " + token.getType() + ", value: " +
@@ -666,20 +717,5 @@ public class SMLAParser {
             j++;
         }
         System.out.println("*** End of the list - Parser successful");
-
-        // Save the node and token lists to a file
-    /* File file = new File("C:\\Users\\HAI\\OneDrive\\Desktop\\output.txt");
-        try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-            writer.println("Node List:");
-            for (Node node : nodeList) {
-                writer.println(node.toString());
-            }
-            writer.println("\nToken List:");
-            for (Token token : tokenList) {
-                writer.println(token.toString());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
     }
 }
