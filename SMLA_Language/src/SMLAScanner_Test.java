@@ -1,11 +1,11 @@
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 import java.io.File;
 import java.util.Scanner;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
-public class SMLAScannerTest {
+public class SMLAScanner_Test {
     // Test 'Report simulation example1 example2'
     @Test
     public void testReport() throws Exception {
@@ -48,7 +48,8 @@ public class SMLAScannerTest {
     public void testVariable() throws Exception {
         SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input1.txt");
         Token[] expectedTokens = {
-                new Token("variable", "PREF1", "10", "", 1),
+                new Token("variable", "PREF1", "", "", 1),
+                new Token("n_integer", "10", "", "", 1),
                 new Token("end_command", "end of command", 1)
         };
         Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
@@ -56,7 +57,6 @@ public class SMLAScannerTest {
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
             assertEquals(expectedTokens[i].getValue(), actualTokens[i].getValue());
-            assertEquals(expectedTokens[i].getVariableValue(), actualTokens[i].getVariableValue());
             assertEquals(expectedTokens[i].getLineNumber(), actualTokens[i].getLineNumber());
         }
     }
@@ -153,10 +153,12 @@ public class SMLAScannerTest {
         SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input8.txt");
         Token[] expectedTokens = {
                 // pref1 = 10
-                new Token("variable", "PREF1", "10", "", 1),
+                new Token("variable", "PREF1", "", "", 1),
+                new Token("n_integer", "10", "", "", 1),
                 new Token("end_command", "end of command", 1),
                 // Vacant = 50
-                new Token("variable", "VACANT", "50", "", 2),
+                new Token("variable", "VACANT", "", "", 2),
+                new Token("n_integer", "50", "", "", 2),
                 new Token("end_command", "end of command", 2),
                 // SETUP SIMULATION (Example1) WITH 4 AS (Group1, Group2, Group3, ABC)
                 new Token("simulation", "SETUP SIMULATION", 3),
