@@ -10,7 +10,8 @@ public class SMLAParser {
     private static Token currentToken;
     String nameSimulation;
     static int totalGroups; // number of groups
-    private List<Token> tokens; // list to receive input data
+    private int numExpression = 0;
+    private final List<Token> tokens; // list to receive input data
     static List<Token> tokenList = new ArrayList<>(); // token list to save output data
 
     // TYPE OF THE TOKENS
@@ -33,10 +34,6 @@ public class SMLAParser {
         assignmentOperator("="),
         end_command("'end of line'"),
         EOF("'end of List'");
-
-        public boolean equals(String value) {
-            return Arrays.asList(this.getValues()).contains(value);
-        }
 
         private final String[] values;
 
@@ -68,15 +65,13 @@ public class SMLAParser {
                 case "variable" -> parseVariable();
                 case "simulation" -> parseSetupSimulation();
                 case "pref" -> parsePref();
-                case "vacant" -> parseSetVacant();
-                case "using" -> parseSetMoving();
+                case "vacant" -> parseVacant();
+                case "using" -> parseMoving();
                 case "run" -> parseRunSimulation();
                 case "report" -> parseReportSimulation();
-                default -> {
-                    throw new IllegalArgumentException("\nInvalid statement type at line: "
-                            + currentToken.getLineNumber() + ", unexpected: " + currentToken.getValue()
-                            + ", expected: alphanumeric, setup, where, using, run or report");
-                }
+                default -> throw new IllegalArgumentException("\nInvalid statement type at line: "
+                        + currentToken.getLineNumber() + ", unexpected: " + currentToken.getValue()
+                        + ", expected: alphanumeric, setup, where, using, run or report");
             }
         }
     }
@@ -84,9 +79,9 @@ public class SMLAParser {
     // 1. PARSER VARIABLE
     private void parseVariable() throws Exception {
         matchType(TokenType.variable);
-        currentTokenIndex++;
         currentToken = tokens.get(currentTokenIndex);
-        prefGroup(tokens, currentToken);
+        calculation(tokens, currentTokenIndex);
+        currentTokenIndex = currentTokenIndex + (numExpression - 1);
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         System.out.println("'Variable' parsed successfully");
     }
@@ -116,7 +111,7 @@ public class SMLAParser {
             currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
             System.out.println("'Vacant' parsed successfully");
         } else if (previous_currentValue.equals("AS")) {
-            String returnValue = "";
+            String returnValue;
             float sum = 0.0F;
             while (!currentToken.getType().equals("end_command")) { // match 'Group1, Group2...'
                 returnValue = prefGroup(tokens, currentToken);
@@ -153,10 +148,9 @@ public class SMLAParser {
     }
 
     // 4. PARSER "WHERE VACANT IS Vacant"
-    private void parseSetVacant() throws Exception {
+    private void parseVacant() throws Exception {
         matchType(TokenType.vacant); // match 'WHERE VACANT IS'
         matchKeywordValue(TokenType.vacant);
-        String currentValue = tokens.get(currentTokenIndex).getValue();
         while (!currentToken.getType().equals("end_command")) { // match 'vacant'
             prefGroup(tokens, currentToken);
         }
@@ -165,7 +159,7 @@ public class SMLAParser {
     }
 
     // 5. PARSER "USING RANDOM MOVE"
-    private void parseSetMoving() throws ParseException {
+    private void parseMoving() throws ParseException {
         checkTokens(tokens, currentTokenIndex, 3); // check number of tokens in command
         matchType(TokenType.using); // match 'USING'
         matchKeywordValue(TokenType.using);
@@ -258,7 +252,6 @@ public class SMLAParser {
     // 4. MATCH THE VALUE OF PHRASES "WITH", "FOR", "TICKS"...
     private void matchPhraseValue(TokenType expectedType) throws ParseException {
         String expectedValue = Objects.requireNonNull(SMLAParser.getTokenValue(String.valueOf(expectedType))).trim();
-        int previousIndex1 = currentTokenIndex - 1;
         int previousIndex2 = currentTokenIndex - 2;
         String type_pre_index2 = tokens.get(previousIndex2).getType();
         String value_pre_index2 = tokens.get(previousIndex2).getValue();
@@ -316,6 +309,20 @@ public class SMLAParser {
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
+    // search name of simulation in the token list
+    public static boolean matchNameSimulation(List<Token> tokens, String nameSimulation) throws Exception {
+        int i = 0;
+        for (Token t : tokens) {
+            if (t.getValue().equals(nameSimulation)) {
+                i++;
+            }
+        }
+        if (i < 2) {
+            throw new Exception("\nInvalid name of simulation report");
+        }
+        return true;
+    }
+
     // III. OTHER FUNCTIONS
     // Move to next token
     private static int advanceToNextToken(List<Token> tokens, int currentTokenIndex) {
@@ -344,18 +351,146 @@ public class SMLAParser {
         TokenType[] tokenTypes = TokenType.values();
         for (int i = 0; i < tokenTypes.length; i++) {
             if (tokenTypes[i].name().equals(type)) {
-                String value = TokenValueFromIndex(i);
-                return value;
+                return TokenValueFromIndex(i);
             }
         }
         return null;
+    }
+
+    // Calculation
+    List<Object> elementsList = new ArrayList<>();
+
+    private void calculation(List<Token> tokens, int currentTokenIndex) throws Exception {
+        float returnValue;
+        int tokenCount = 0;
+
+        // count tokens in variable
+        String currentLine = String.valueOf(tokens.get(currentTokenIndex).getLineNumber());
+        for (int i = currentTokenIndex; i < tokens.size(); i++) {
+            if (tokens.get(i).getLineNumber() == Integer.parseInt(currentLine)) {
+                if (tokens.get(i).getType().equals("end of command")) {
+                    break; // Stop counting tokens on the current line
+                } else {
+                    tokenCount++; // Increment token count
+                    numExpression = tokenCount;
+                }
+            }
+        }
+        if ((tokenCount - 2) % 2 == 0) { // invalid expression
+            throw new Exception("Invalid variable, line " + currentLine);
+        } else {
+            elementsList.clear();
+            for (int i = (currentTokenIndex + 1); i < (currentTokenIndex + tokenCount - 1); i++) {
+                elementsList.add(tokens.get(i).getValue()); // add expression elements into the list
+            }
+            //Check elementsList
+            if (elementsList.size() == 1) { // variable has one element
+                String value = (String) elementsList.get(0);
+                for (Token token : tokens) {
+                    if (token.getValue().equals(value)) { // element exists in the token list
+                        tokens.get(currentTokenIndex).setVariableValue(token.getVariableValue());
+                    } else { // if it doesn't exist so set it like a string or number
+                        tokens.get(currentTokenIndex).setVariableValue(value);
+                    }
+                    addNodeAndToken(tokens.get(currentTokenIndex));
+                    break;
+                }
+            } else {
+                List<Object> elementsList1 = elementsListCheck(elementsList);
+                returnValue = performCalculation(elementsList1);
+                if (tokens.get(currentTokenIndex).getType().equals("variable")) {
+                    tokens.get(currentTokenIndex).setVariableValue(String.valueOf(returnValue));
+                    addNodeAndToken(tokens.get(currentTokenIndex));
+                }
+            }
+        }
+    }
+
+    // Check variable is valid expression
+    private List<Object> elementsListCheck(List<Object> elementsList) throws Exception {
+        for (int i = 0; i < elementsList.size(); i++) {
+            if (i % 2 == 0) {
+                String element = (String) elementsList.get(i);
+                if (!isFloat(element) && !isAlphanumeric(element)) {
+                    throw new Exception("Invalid input, unexpected: " + element + ", line " + currentTokenIndex);
+                }
+                // Even index: check if the element is a number
+                if (isFloat(element)) {
+                    float number = Float.parseFloat(element);
+                    elementsList.set(i, number);
+                } else { // check if the element is a variable
+                    float number = findElementInTokensList(tokens, element);
+                    elementsList.set(i, number);
+                }
+            } else {
+                // Odd index: check if the element is an operator
+                String element = (String) elementsList.get(i);
+                if (!isOperator(element)) {
+                    throw new Exception("Invalid operator, unexpected: " + element + ", line " + currentTokenIndex);
+                }
+            }
+        }
+        return elementsList;
+    }
+
+    // search element in the token list
+    private float findElementInTokensList(List<Token> tokens, String element) throws Exception {
+        float lastValue = Float.NaN; // Default value in case the second value is not found
+        float firstValue = Float.NaN;
+        for (Token token : tokens) {
+            if (token.getType().equals("variable") && token.getValue().equals(element)) {
+                // Variable found, update the value
+                if (token.getVariableValue() != null) {
+                    lastValue = Float.parseFloat(token.getVariableValue());
+                    firstValue = lastValue;
+                } else {
+                    lastValue = firstValue;
+                }
+            }
+        }
+        if (Float.toString(lastValue).equals("NaN")) {
+            throw new Exception("Variable: " + "'" + element + "'" + " doesn't exist");
+        } else {
+            return lastValue;
+        }
+    }
+
+    // Calculate and return result
+    public static float performCalculation(List<Object> calculation) {
+        List<Object> result = new ArrayList<>(calculation);
+        // Perform multiplication and division operations
+        int i = 1;
+        while (i < result.size()) {
+            if (result.get(i) instanceof String operator) {
+                if (operator.equals("*") || operator.equals("/")) {
+                    float operand1 = (float) result.get(i - 1);
+                    float operand2 = (float) result.get(i + 1);
+                    float operationResult = operator.equals("*") ? operand1 * operand2 : operand1 / operand2;
+                    result.set(i - 1, operationResult);
+                    result.remove(i);
+                    result.remove(i);
+                } else {
+                    i += 2;
+                }
+            } else {
+                i += 2;
+            }
+        }
+        // Perform addition and subtraction operations
+        float finalResult = (float) result.get(0);
+        for (i = 1; i < result.size(); i += 2) {
+            String operator = (String) result.get(i);
+            float operand = (float) result.get(i + 1);
+            finalResult = operator.equals("+") ? finalResult + operand : finalResult - operand;
+        }
+        return (float) (Math.round(finalResult * 10.0) / 10.0);
     }
 
     // Set pref for group
     private String prefGroup(List<Token> tokens, Token currentToken) throws Exception {
         String returnValue = "";
         String currentValue = currentToken.getValue();
-        float newValue = 0;
+        float newValue;
         // calculation (float), (float +|-|*|/ variable), (float +|-|*|/ float)
         if (isFloat(currentValue)) { // check token value is a float, fx. 7.0
             if (Float.parseFloat(currentValue) == 0) {
@@ -440,22 +575,24 @@ public class SMLAParser {
 
     // Calculation two variables
     private String performMathOperation2(Token t2, int currentTokenIndex, float newValue) throws Exception {
-        String returnValue = "";
+        String returnValue;
         float variableValue = Float.parseFloat(t2.getVariableValue()); // convert value of next variable to float (t2)
-        if (tokens.get(currentTokenIndex + 1).getValue().equals("+")) { // check '+' after the first variable (t)
-            newValue += variableValue; // y + z
-        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("-")) {
-            newValue -= variableValue; // y - z
-            if (newValue <= 0) {
-                throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
+        switch (tokens.get(currentTokenIndex + 1).getValue()) {
+            case "+" ->  // check '+' after the first variable (t)
+                    newValue += variableValue; // y + z
+            case "-" -> {
+                newValue -= variableValue; // y - z
+                if (newValue <= 0) {
+                    throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
+                }
             }
-        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("*")) {
-            newValue = newValue * variableValue; // y * z
-        } else if (tokens.get(currentTokenIndex + 1).getValue().equals("/")) {
-            if (variableValue == 0) {
-                throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+            case "*" -> newValue = newValue * variableValue; // y * z
+            case "/" -> {
+                if (variableValue == 0) {
+                    throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+                }
+                newValue = newValue / variableValue; // y / z
             }
-            newValue = newValue / variableValue; // y / z
         }
         float newValue1 = (float) (Math.round(newValue * 10.0) / 10.0);
         int lineNum = tokens.get(currentTokenIndex).getLineNumber();
@@ -472,22 +609,23 @@ public class SMLAParser {
 
     // Calculation one variable and one number
     private String performMathOperation3(int currentTokenIndex, float newValue, float nextValue) throws Exception {
-        String returnValue = "";
+        String returnValue;
         String nextValue1 = String.valueOf(tokens.get(currentTokenIndex + 1).getValue()).trim();
-        if (nextValue1.equals("+")) {
-            newValue += nextValue; // y + 5
-        } else if (nextValue1.equals("-")) {
-            newValue -= nextValue; // y - 5
-            if (newValue <= 0) {
-                throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
+        switch (nextValue1) {
+            case "+" -> newValue += nextValue; // y + 5
+            case "-" -> {
+                newValue -= nextValue; // y - 5
+                if (newValue <= 0) {
+                    throw new Exception("\nInvalid value: zero or negative, line " + currentToken.getLineNumber());
+                }
             }
-        } else if (nextValue1.equals("*")) {
-            newValue = newValue * nextValue; // y * 5
-        } else if (nextValue1.equals("/")) {
-            if (nextValue == 0) {
-                throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+            case "*" -> newValue = newValue * nextValue; // y * 5
+            case "/" -> {
+                if (nextValue == 0) {
+                    throw new Exception("\nInvalid value: cannot be divided by 0, line " + currentToken.getLineNumber());
+                }
+                newValue = newValue / nextValue; // y / 5
             }
-            newValue = newValue / nextValue; // y / 5
         }
         float newValue1 = (float) (Math.round(newValue * 10.0) / 10.0);
         int lineNum = tokens.get(currentTokenIndex).getLineNumber();
@@ -512,9 +650,9 @@ public class SMLAParser {
     }
 
     // Assign value to variable
-    public void assignVariable(List<Token> tokens, Token currentToken) throws Exception {
+    public void assignVariable(List<Token> tokens, Token currentToken) {
         int lineNum = currentToken.getLineNumber();
-        String typ = "";
+        String typ;
         boolean isNewVariable = true;
         for (Token t : tokens) {
             if (t.getValue().equals(currentToken.getValue()) && t.getType().equals("variable")) {
@@ -544,19 +682,6 @@ public class SMLAParser {
         }
     }
 
-    public static boolean matchNameSimulation(List<Token> tokens, String nameSimulation) throws Exception {
-        int i = 0;
-        for (Token t : tokens) {
-            if (t.getValue().equals(nameSimulation)) {
-                i++;
-            }
-        }
-        if (i < 2) {
-            throw new Exception("\nInvalid name of simulation report");
-        }
-        return true;
-    }
-
     // Get number of tokens in the command
     private int getTokensCommand(List<Token> tokens, int startIndex) {
         int endIndex = startIndex + 1;
@@ -569,8 +694,7 @@ public class SMLAParser {
             }
             endIndex++;
         }
-        int numTokens = endIndex - startIndex;
-        return numTokens;
+        return endIndex - startIndex;
     }
 
     // Find element in array
@@ -617,7 +741,7 @@ public class SMLAParser {
     }
 
     // Add node and token to the list
-    private void addNodeAndToken(Token currentToken) throws ParseException {
+    private void addNodeAndToken(Token currentToken) {
         tokenList.add(currentToken);
     }
 
@@ -629,93 +753,5 @@ public class SMLAParser {
 
     public static List<Token> getTokenList() {
         return tokenList;
-    }
-
-    // CHECK PROGRAM
-    public static void main(String[] args) throws Exception {
-        List<Token> tokens = new ArrayList<>();
-        // Output from Scanner
-        // Variable pref1 = 10, vacant = 50
-        tokens.add(new Token("variable", "GROUP1", "30", "", 1));
-        tokens.add(new Token("end_command", "end of command", "", "", 1));
-        tokens.add(new Token("variable", "GROUP2", "25", "", 2));
-        tokens.add(new Token("end_command", "end of command", "", "", 2));
-        tokens.add(new Token("variable", "GROUP3", "20", "", 3));
-        tokens.add(new Token("end_command", "end of command", "", "", 3));
-        tokens.add(new Token("variable", "ABC", "25", "", 4));
-        tokens.add(new Token("end_command", "end of command", "", "", 4));
-
-        // Run simulation Example1 FOR 50 TICKS
-        tokens.add(new Token("run", "RUN SIMULATION", "", "", 5));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 5));
-        tokens.add(new Token("phrase", "FOR", "", "", 5));
-        tokens.add(new Token("n_integer", "50", "", "", 5));
-        tokens.add(new Token("phrase", "TICKS", "", "", 5));
-        tokens.add(new Token("end_command", "end of command", "", "", 5));
-
-        // Report simulation Example1
-        tokens.add(new Token("report", "REPORT SIMULATION", "", "", 6));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 6));
-        tokens.add(new Token("end_command", "end of command", "", "", 6));
-
-        // Using random move
-        tokens.add(new Token("using", "USING", "", "", 7));
-        tokens.add(new Token("typeMoving", "RANDOM", "", "", 7));
-        tokens.add(new Token("phrase", "MOVE", "", "", 7));
-        tokens.add(new Token("end_command", "end of command", "", "", 7));
-
-        // Setup simulation (Example1) WITH 4 AS (Group1, Group2, Group3, ABC)
-        tokens.add(new Token("simulation", "SETUP SIMULATION", "", "", 8));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 8));
-        tokens.add(new Token("phrase", "WITH", "", "", 8));
-        tokens.add(new Token("n_integer", "4", "", "", 8));
-        tokens.add(new Token("phrase", "AS", "", "", 8));
-        tokens.add(new Token("alphanumeric", "GROUP1", "", "", 8));
-        tokens.add(new Token("alphanumeric", "GROUP2", "", "", 8));
-        tokens.add(new Token("alphanumeric", "GROUP3", "", "", 8));
-        tokens.add(new Token("alphanumeric", "ABC", "", "", 8));
-        tokens.add(new Token("end_command", "end of command", "", "", 8));
-
-        // Where pref is (10, 20, 30, 40)
-        tokens.add(new Token("pref", "WHERE PREF IS", "", "", 9));
-        tokens.add(new Token("n_integer", "10", "", "", 9));
-        tokens.add(new Token("n_integer", "20", "", "", 9));
-        tokens.add(new Token("n_integer", "30", "", "", 9));
-        tokens.add(new Token("n_integer", "40", "", "", 9));
-        tokens.add(new Token("end_command", "end of command", "", "", 9));
-
-        // Where vacant is Vacant
-        tokens.add(new Token("vacant", "WHERE VACANT IS", "", "", 10));
-        tokens.add(new Token("n_integer", "65", "", "", 10));
-        tokens.add(new Token("end_command", "end of command", "", "", 10));
-
-        try {
-            SMLAParser parser = new SMLAParser(tokens);
-            parser.parseProgram();
-            System.out.println("\n Parser success");
-        } catch (ParseException e) {
-            System.out.println("Error: " + e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("\n - Parser result: ");
-        //   SMLAParser parser = new SMLAParser(tokens);
-        SMLAParser parser = new SMLAParser(tokens);
-        parser.parseProgram();
-
-        System.out.println("\n*** Token list from Parser ");
-
-        int j = 1;
-        for (Token token : getTokenList()) {
-            if (token.getType().equals("variable")) {
-                System.out.println(j + "-type: " + token.getType() + ", value: " +
-                        token.getValue() + ", variable value: " + token.getVariableValue() + ", line: " + token.getLineNumber());
-            } else {
-                System.out.println(j + "-type: " + token.getType() + ", value: " + token.getValue() +
-                        ", line: " + token.getLineNumber());
-            }
-            j++;
-        }
-        System.out.println("*** End of the list - Parser successful");
     }
 }

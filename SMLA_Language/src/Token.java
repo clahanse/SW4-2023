@@ -2,8 +2,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Token {
-    private String type;
-    private String value;
+    private final String type;
+    private final String value;
     private int lineNumber;
     private List<String> commands;
     private String variableValue;
@@ -37,10 +37,6 @@ public class Token {
         return value;
     }
 
-    public void setValue(String newValue) {
-        this.value = newValue;
-    }
-
     public String getVariableValue() {
         return variableValue;
     }
@@ -55,10 +51,6 @@ public class Token {
 
     public int getLineNumber() {
         return lineNumber;
-    }
-
-    public void setLineNumber(int lineNumber) {
-        this.lineNumber = lineNumber;
     }
 
     @Override

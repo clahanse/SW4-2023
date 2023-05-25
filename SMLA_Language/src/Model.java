@@ -4,13 +4,14 @@ import org.nlogo.headless.HeadlessWorkspace;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Model {
 
     // run Schelling model with 2 groups and interface
     public static void runModelA(String report, String modelType, float perc_vacant_space, List<String> perc_group,
-                                 List<String> perc_similarity, int NoTicks, String outputFile) {
+                                 List<String> perc_similarity, int NoTicks) {
         String ModelLibrary = "C:\\Users\\HAI\\OneDrive\\Desktop\\Model\\";
         PrintWriter writer = null;
         float perc_group1 = Float.parseFloat(perc_group.get(0));
@@ -20,13 +21,11 @@ public class Model {
 
         App.main(new String[]{});
         try {
-            java.awt.EventQueue.invokeAndWait(new Runnable() {
-                public void run() {
-                    try {
-                        App.app().open(ModelLibrary + modelType + ".nlogo", false);
-                    } catch (java.io.IOException ex) {
-                        ex.printStackTrace();
-                    }
+            java.awt.EventQueue.invokeAndWait(() -> {
+                try {
+                    App.app().open(ModelLibrary + modelType + ".nlogo", false);
+                } catch (java.io.IOException ex) {
+                    ex.printStackTrace();
                 }
             });
             // Modify percentage of groups, similarity and vacant
@@ -133,18 +132,17 @@ public class Model {
 
     // Run available model
     public static void runModel(String movingType, String report, String perc_vacant_space,
-                                List<String> perc_group, List<String> perc_similarity, int NoTicks) throws InterruptedException {
-        String outputFilePath = "C:\\Users\\HAI\\OneDrive\\Desktop\\Model\\simulation.txt";
-        String modelType = "";
+                                List<String> perc_group, List<String> perc_similarity, int NoTicks) {
+        String modelType;
         if (movingType.equals("RANDOM")) {
             modelType = "Schelling's model-A-Random";
             Model.runModelA(report, modelType, Float.parseFloat(perc_vacant_space), perc_group,
-                    perc_similarity, NoTicks, outputFilePath);
+                    perc_similarity, NoTicks);
         }
         if (movingType.equals("SCHELLING")) {
             modelType = "Schelling's model-A-Schelling";
             Model.runModelA(report, modelType, Float.parseFloat(perc_vacant_space), perc_group,
-                    perc_similarity, NoTicks, outputFilePath);
+                    perc_similarity, NoTicks);
         }
     }
 
@@ -152,6 +150,92 @@ public class Model {
     public static void runModelCode(int numGroups, String movingType, String report,
                                     int NoTicks, String outputFile) throws InterruptedException {
         String modelType = report + "_" + numGroups + "_" + movingType;
-        Model.runModelSchelling(report, modelType, NoTicks, numGroups, outputFile);
+        runModelSchelling(report, modelType, NoTicks, numGroups, outputFile);
+    }
+
+    // Simulate relevant simulations
+    public void processRelevantSimulations(List<String> reportList, List<List<Token>> simulations,
+                       SMLACodeGenerator codeGenerator, String saveLibrary) throws InterruptedException {
+        List<List<Token>> relevantSimulations = new ArrayList<>();
+        StringBuilder outputFile = new StringBuilder();
+        // Choose relevant simulations from report list
+        for (int k = 0; k < reportList.size(); k++) {
+            String reportName = reportList.get(k);
+            if (k == reportList.size() - 1) { // get name for output file for more simulation
+                outputFile.append(reportList.get(k));
+            } else {
+                outputFile.append(reportList.get(k)).append("_");
+            }
+            for (List<Token> simulation : simulations) {
+                if (simulation.get(1).getValue().equals(reportName)) {
+                    relevantSimulations.add(simulation);
+                    System.out.println("- Relevant simulation: " + simulation);
+                    break;
+                }
+            }
+        }
+        // Run simulation in relevant simulations list
+        for (int h = 0; h < relevantSimulations.size(); h++) {
+            List<String> percGroup = new ArrayList<>();
+            List<String> percSimilarity = new ArrayList<>();
+            List<Token> currentSimulation = relevantSimulations.get(h);
+            int numGroups = 0;
+            int NoTicks = 0;
+            float percVacantSpace = 50;
+            String movingType = "RANDOM";
+            String report = "";
+            String outputFile1 = "";
+            // Get parameters from relevant simulation
+            for (Token token : currentSimulation) {
+                switch (token.getType()) {
+                    case "numGroups" -> numGroups = Integer.parseInt(token.getValue());
+                    case "perc_group1" -> {
+                        int indexGroup = currentSimulation.indexOf(token);
+
+                        for (int t = indexGroup; t < indexGroup + numGroups; t++) {
+                            percGroup.add(currentSimulation.get(t).getValue());
+                        }
+                    }
+                    case "perc_similarity_wanted_group1" -> {
+                        int indexGroup = currentSimulation.indexOf(token);
+
+                        for (int t = indexGroup; t < indexGroup + numGroups; t++) {
+                            percSimilarity.add(currentSimulation.get(t).getValue());
+                        }
+                    }
+                    case "perc_vacant_space" -> percVacantSpace = Float.parseFloat(token.getValue());
+                    case "movingType" -> movingType = token.getValue();
+                    case "NoTicks" -> NoTicks = Integer.parseInt(token.getValue());
+                    case "nameSimulation" -> report = token.getValue();
+                }
+
+                if (h == 0) { // get name for output file for a simulation
+                    outputFile1 = "Report_" + report + "_" + numGroups + "_" + movingType;
+                }
+            }
+
+            if (percSimilarity.isEmpty()) { // set percent similarities if they haven't been set
+                for (int y = 0; y < numGroups; y++) {
+                    percSimilarity.add("50");
+                }
+            }
+
+            if (reportList.size() == 1) {
+                outputFile = new StringBuilder(outputFile1);
+            }
+
+            if (numGroups == 2 && reportList.size() == 1) { // using Model only for 2 groups and 1 report
+                // run and print simulation report to the screen
+                System.out.println("\n+ REPORT SIMULATION " + report + ":");
+                runModel(movingType, report, String.valueOf(percVacantSpace), percGroup, percSimilarity, NoTicks);
+            } else {
+                // NetLogo code generator
+               codeGenerator.generateNLogoFile(saveLibrary, report, numGroups, movingType,
+                        String.valueOf(percVacantSpace), percGroup, percSimilarity);
+                // run and print simulation report to the screen
+                System.out.println("\n+ REPORT SIMULATION " + report + ":");
+                runModelCode(numGroups, movingType, report, NoTicks, outputFile.toString());
+            }
+        }
     }
 }

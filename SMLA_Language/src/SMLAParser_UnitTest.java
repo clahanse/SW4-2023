@@ -5,7 +5,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class SMLAParser_Test {
+public class SMLAParser_UnitTest {
     // Test 'Report simulation example1'
     @Test
     public void testSetup() throws Exception {

@@ -6,7 +6,7 @@ import java.util.List;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class SMLA_AST_Test {
+public class SMLA_AST_UnitTest {
 
     // Test 'Using schelling move'
     @Test
@@ -21,12 +21,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[2];
         CommandNode node = nodeList.get(0);
-        if (node instanceof CommandNode.UsingCommandNode) { // node is using command
-            CommandNode.UsingCommandNode UsingNode = (CommandNode.UsingCommandNode) node;
+        if (node instanceof CommandNode.UsingCommandNode UsingNode) { // node is using command
             actualArray[0] = UsingNode.getKeyword();
             actualArray[1] = UsingNode.getIdentifier();
         }
@@ -53,12 +52,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[7];
         CommandNode node = nodeList.get(0);
-        if (node instanceof CommandNode.SimulationCommandNode) { // node is setup command
-            CommandNode.SimulationCommandNode SimuNode = (CommandNode.SimulationCommandNode) node;
+        if (node instanceof CommandNode.SimulationCommandNode SimuNode) { // node is setup command
             actualArray[0] = SimuNode.getKeyword();
             actualArray[1] = SimuNode.getIdentifier();
             actualArray[2] = String.valueOf(SimuNode.getNInteger());
@@ -96,12 +94,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[5];
         CommandNode node = nodeList.get(1);
-        if (node instanceof CommandNode.PrefCommandNode) { // node is pref command
-            CommandNode.PrefCommandNode PrefNode = (CommandNode.PrefCommandNode) node;
+        if (node instanceof CommandNode.PrefCommandNode PrefNode) { // node is pref command
             actualArray[0] = PrefNode.getKeyword();
             actualArray[1] = PrefNode.getnFloats().get(0);
             actualArray[2] = PrefNode.getnFloats().get(1);
@@ -124,12 +121,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[2];
         CommandNode node = nodeList.get(0);
-        if (node instanceof CommandNode.VacantCommandNode) { // node is vacant command
-            CommandNode.VacantCommandNode VacantNode = (CommandNode.VacantCommandNode) node;
+        if (node instanceof CommandNode.VacantCommandNode VacantNode) { // node is vacant command
             actualArray[0] = VacantNode.getKeyword();
             actualArray[1] = VacantNode.getIdentifier();
         }
@@ -162,12 +158,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[3];
         CommandNode node = nodeList.get(1);
-        if (node instanceof CommandNode.RunCommandNode) { // node is vacant command
-            CommandNode.RunCommandNode RunNode = (CommandNode.RunCommandNode) node;
+        if (node instanceof CommandNode.RunCommandNode RunNode) { // node is vacant command
             actualArray[0] = RunNode.getKeyword();
             actualArray[1] = RunNode.getIdentifier();
             actualArray[2] = String.valueOf(RunNode.getNInteger());
@@ -198,12 +193,11 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[2];
         CommandNode node = nodeList.get(1);
-        if (node instanceof CommandNode.ReportCommandNode) { // node is vacant command
-            CommandNode.ReportCommandNode ReportNode = (CommandNode.ReportCommandNode) node;
+        if (node instanceof CommandNode.ReportCommandNode ReportNode) { // node is vacant command
             actualArray[0] = ReportNode.getKeyword();
             actualArray[1] = ReportNode.getIdentifiers().get(0);
         }
@@ -256,7 +250,7 @@ public class SMLA_AST_Test {
 
         SMLA_AST ast = new SMLA_AST(tokens);
         ast.parseCommands();
-        List<CommandNode> nodeList = new ArrayList<>();
+        List<CommandNode> nodeList;
         nodeList = ast.getNodes();
         String[] actualArray = new String[7];
         String[] actualArray1 = new String[5];
@@ -265,8 +259,7 @@ public class SMLA_AST_Test {
         String[] actualArray4 = new String[3];
         String[] actualArray5 = new String[2];
         CommandNode node = nodeList.get(0);
-        if (node instanceof CommandNode.SimulationCommandNode) { // node is setup command
-            CommandNode.SimulationCommandNode SimuNode = (CommandNode.SimulationCommandNode) node;
+        if (node instanceof CommandNode.SimulationCommandNode SimuNode) { // node is setup command
             actualArray[0] = SimuNode.getKeyword();
             actualArray[1] = SimuNode.getIdentifier();
             actualArray[2] = String.valueOf(SimuNode.getNInteger());
@@ -278,8 +271,7 @@ public class SMLA_AST_Test {
             assertArrayEquals(expectedArray, actualArray);
         }
         node = nodeList.get(1);
-        if (node instanceof CommandNode.PrefCommandNode) { // node is pref command
-            CommandNode.PrefCommandNode PrefNode = (CommandNode.PrefCommandNode) node;
+        if (node instanceof CommandNode.PrefCommandNode PrefNode) { // node is pref command
             actualArray1[0] = PrefNode.getKeyword();
             actualArray1[1] = PrefNode.getnFloats().get(0);
             actualArray1[2] = PrefNode.getnFloats().get(1);
@@ -289,24 +281,21 @@ public class SMLA_AST_Test {
             assertArrayEquals(expectedArray1, actualArray1);
         }
         node = nodeList.get(2);
-        if (node instanceof CommandNode.VacantCommandNode) { // node is vacant command
-            CommandNode.VacantCommandNode VacantNode = (CommandNode.VacantCommandNode) node;
+        if (node instanceof CommandNode.VacantCommandNode VacantNode) { // node is vacant command
             actualArray2[0] = VacantNode.getKeyword();
             actualArray2[1] = VacantNode.getIdentifier();
             assertEquals(expectedArray2.length, actualArray2.length);
             assertArrayEquals(expectedArray2, actualArray2);
         }
         node = nodeList.get(3);
-        if (node instanceof CommandNode.UsingCommandNode) { // node is using command
-            CommandNode.UsingCommandNode UsingNode = (CommandNode.UsingCommandNode) node;
+        if (node instanceof CommandNode.UsingCommandNode UsingNode) { // node is using command
             actualArray3[0] = UsingNode.getKeyword();
             actualArray3[1] = UsingNode.getIdentifier();
             assertEquals(expectedArray3.length, actualArray3.length);
             assertArrayEquals(expectedArray3, actualArray3);
         }
         node = nodeList.get(4);
-        if (node instanceof CommandNode.RunCommandNode) { // node is run command
-            CommandNode.RunCommandNode RunNode = (CommandNode.RunCommandNode) node;
+        if (node instanceof CommandNode.RunCommandNode RunNode) { // node is run command
             actualArray4[0] = RunNode.getKeyword();
             actualArray4[1] = RunNode.getIdentifier();
             actualArray4[2] = String.valueOf(RunNode.getNInteger());
@@ -314,8 +303,7 @@ public class SMLA_AST_Test {
             assertArrayEquals(expectedArray4, actualArray4);
         }  //'Setup simulation(Example1) with 4 as (20, 35, 20, 25)'
         node = nodeList.get(5);
-        if (node instanceof CommandNode.ReportCommandNode) { // node is report command
-            CommandNode.ReportCommandNode ReportNode = (CommandNode.ReportCommandNode) node;
+        if (node instanceof CommandNode.ReportCommandNode ReportNode) { // node is report command
             actualArray5[0] = ReportNode.getKeyword();
             actualArray5[1] = ReportNode.getIdentifiers().get(0);
             assertEquals(expectedArray5.length, actualArray5.length);

@@ -4,9 +4,9 @@ import java.util.List;
 public class SMLA_AST {
     private static int currentTokenIndex;
     private static Token currentToken;
-    private List<Token> tokens;
+    private final List<Token> tokens;
     private int numGroups;
-    private List<CommandNode> nodes;
+    private final List<CommandNode> nodes;
 
     public SMLA_AST(List<Token> tokens) {
         this.tokens = tokens;
@@ -175,7 +175,6 @@ public class SMLA_AST {
         node.setIdentifier(identifier);
         nodes.add(node);
         printAST(node);
-        // currentTokenIndex++;
         currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
@@ -242,7 +241,6 @@ public class SMLA_AST {
             nodes.add(node);
             printAST(node);
             currentTokenIndex++;
-            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         } else {
             CommandNode.RunCommandNode node = new CommandNode.RunCommandNode();
             node.setKeyword(keyword);
@@ -250,8 +248,8 @@ public class SMLA_AST {
             nodes.add(node);
             printAST(node);
             //  currentTokenIndex++;
-            currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
         }
+        currentTokenIndex = advanceToNextToken(tokens, currentTokenIndex);
     }
 
     // PARSER REPORT COMMAND
@@ -308,26 +306,20 @@ public class SMLA_AST {
     public static <ASTNode extends CommandNode> void printAST(ASTNode node) {
         if (node instanceof CommandNode.VariableCommandNode variableNode) {
             System.out.println("- Variable Command: " + variableNode.getIdentifiers());
-        } else if (node instanceof CommandNode.SimulationCommandNode) {
-            CommandNode.SimulationCommandNode simNode = (CommandNode.SimulationCommandNode) node;
+        } else if (node instanceof CommandNode.SimulationCommandNode simNode) {
             System.out.println("- Setup Simulation Command: " + simNode.getKeyword() + ", " + simNode.getIdentifier() + ", "
                     + simNode.getNInteger() + ", " + simNode.getNFloats());
-        } else if (node instanceof CommandNode.PrefCommandNode) {
-            CommandNode.PrefCommandNode prefNode = (CommandNode.PrefCommandNode) node;
+        } else if (node instanceof CommandNode.PrefCommandNode prefNode) {
             System.out.println("- Pref Command: " + prefNode.getKeyword() + ", " + prefNode.getnFloats());
 
-        } else if (node instanceof CommandNode.VacantCommandNode) {
-            CommandNode.VacantCommandNode vacantNode = (CommandNode.VacantCommandNode) node;
+        } else if (node instanceof CommandNode.VacantCommandNode vacantNode) {
             System.out.println("- Vacant Command: " + vacantNode.getKeyword() + ", " + vacantNode.getIdentifier());
 
-        } else if (node instanceof CommandNode.UsingCommandNode) {
-            CommandNode.UsingCommandNode usingNode = (CommandNode.UsingCommandNode) node;
+        } else if (node instanceof CommandNode.UsingCommandNode usingNode) {
             System.out.println("- Moving type Command: " + usingNode.getKeyword() + ", " + usingNode.getIdentifier());
-        } else if (node instanceof CommandNode.RunCommandNode) {
-            CommandNode.RunCommandNode runNode = (CommandNode.RunCommandNode) node;
+        } else if (node instanceof CommandNode.RunCommandNode runNode) {
             System.out.println("- Run Simulation Command: " + runNode.getKeyword() + ", " + runNode.getIdentifier() + ", " + runNode.getNInteger());
-        } else if (node instanceof CommandNode.ReportCommandNode) {
-            CommandNode.ReportCommandNode reportNode = (CommandNode.ReportCommandNode) node;
+        } else if (node instanceof CommandNode.ReportCommandNode reportNode) {
             System.out.println("- Report Command: " + reportNode.getKeyword() + ", " + reportNode.getIdentifiers());
         }
 
@@ -337,58 +329,64 @@ public class SMLA_AST {
         }
     }
 
-    public static void main(String[] args) {
-        List<Token> tokens = new ArrayList<>();
-        // Output from Parser
-        // Variable pref1 = 10, vacant = 50
-        tokens.add(new Token("variable", "PREF1", "10", "", 1));
-        tokens.add(new Token("variable", "VACANT", "50", "", 2));
+    // Node list visitor
+    public void processNodesList(List<CommandNode> nodesList, List<List<Token>> simulations) {
+        List<Token> commands = new ArrayList<>();
+        int numGroups = 0;
+        for (CommandNode node : nodesList) {
+            if (node instanceof CommandNode.SimulationCommandNode simNode) {
+                numGroups = simNode.getNInteger();
+                commands.add(new Token("numGroups", Integer.toString(numGroups)));
+                commands.add(new Token("nameSimulation", simNode.getIdentifier()));
 
-        // Run simulation Example1 FOR 50 TICKS
-        tokens.add(new Token("run", "RUN SIMULATION", "", "", 3));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 3));
-        tokens.add(new Token("phrase", "FOR", "", "", 3));
-        tokens.add(new Token("n_integer", "50", "", "", 3));
-        tokens.add(new Token("phrase", "TICKS", "", "", 3));
+                if (simNode.getNFloats() != null) {
+                    List<String> nFloats = simNode.getNFloats();
+                    for (int q = 0; q < numGroups; q++) {
+                        commands.add(new Token("perc_group" + (q + 1), nFloats.get(q)));
+                    }
+                } else {
+                    float value = (float) (100.0 / numGroups);
+                    float newValue = (float) (Math.round(value * 10.0) / 10.0);
 
-        // Report simulation Example1
-        tokens.add(new Token("report", "REPORT SIMULATION", "", "", 4));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 4));
-
-        // Using random move
-        tokens.add(new Token("using", "USING", "", "", 5));
-        tokens.add(new Token("typeMoving", "RANDOM", "", "", 5));
-        tokens.add(new Token("phrase", "MOVE", "", "", 5));
-
-        // Setup simulation (Example1) WITH 4 AS (Group1, Group2, Group3, ABC)
-        tokens.add(new Token("simulation", "SETUP SIMULATION", "", "", 6));
-        tokens.add(new Token("alphanumeric", "EXAMPLE1", "", "", 6));
-        tokens.add(new Token("phrase", "WITH", "", "", 6));
-        tokens.add(new Token("n_integer", "4", "", "", 6));
-        tokens.add(new Token("phrase", "AS", "", "", 6));
-        tokens.add(new Token("n_float", "30", "", "", 6));
-        tokens.add(new Token("n_float", "20", "", "", 6));
-        tokens.add(new Token("n_float", "30", "", "", 6));
-        tokens.add(new Token("n_float", "20", "", "", 6));
-
-        // Where pref is (10, 20, 30, 40)
-        tokens.add(new Token("pref", "WHERE PREF IS", "", "", 7));
-        tokens.add(new Token("n_float", "10", "", "", 7));
-        tokens.add(new Token("n_float", "20", "", "", 7));
-        tokens.add(new Token("n_float", "30", "", "", 7));
-        tokens.add(new Token("n_float", "40", "", "", 7));
-
-        // Where vacant is Vacant
-        tokens.add(new Token("vacant", "WHERE VACANT IS", "", "", 8));
-        tokens.add(new Token("n_float", "50", "", "", 8));
-
-        CommandNode node = null;
-        System.out.println("\n - AST output: ");
-        try {
-            new SMLA_AST(tokens).parseProgram();
-        } catch (Exception e) {
-            e.printStackTrace();
+                    for (int q = 0; q < numGroups; q++) {
+                        commands.add(new Token("perc_group" + (q + 1), Float.toString(newValue)));
+                    }
+                }
+            } else if (node instanceof CommandNode.PrefCommandNode prefNode) {
+                if (prefNode.getnFloats() != null) {
+                    List<String> nFloats = prefNode.getnFloats();
+                    for (int q = 0; q < numGroups; q++) {
+                        commands.add(new Token("perc_similarity_wanted_group" + (q + 1), nFloats.get(q)));
+                    }
+                }
+            } else if (node instanceof CommandNode.VacantCommandNode vacantNode) {
+                commands.add(new Token("perc_vacant_space", vacantNode.getIdentifier()));
+            } else if (node instanceof CommandNode.UsingCommandNode usingNode) {
+                commands.add(new Token("movingType", usingNode.getIdentifier()));
+            } else if (node instanceof CommandNode.RunCommandNode runNode) {
+                int numTicks = runNode.getNInteger();
+                if (numTicks == 0) {
+                    numTicks = 10;
+                }
+                commands.add(new Token("NoTicks", Integer.toString(numTicks)));
+                simulations.add(commands);
+                commands = new ArrayList<>();
+            }
         }
-        System.out.println("*** End of node list - Create AST successfully");
-    }
+      }
+
+    // Get list of simulation report
+    public void getReportList(List<CommandNode> nodesList, List<String> reportList) throws Exception {
+        for (CommandNode node : nodesList) {
+            if (node instanceof CommandNode.ReportCommandNode reportNode) {
+               List<String> identifiers = reportNode.getIdentifiers();
+                for (String reportIdentifier : identifiers) {
+                    boolean check = SMLAParser.matchNameSimulation(SMLAParser.getTokenList(), reportIdentifier);
+                    if (check) {
+                        reportList.add(reportIdentifier);
+                    }
+                }
+            }
+        }
+   }
 }
