@@ -5,18 +5,18 @@ import java.util.Scanner;
 
 import static org.junit.Assert.assertEquals;
 
-public class SMLAScanner_Test {
+public class SMLAScanner_UnitTest {
     // Test 'Report simulation example1 example2'
     @Test
     public void testReport() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input7.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input7.txt");
         Token[] expectedTokens = {
                 new Token("report", "REPORT SIMULATION", 1),
                 new Token("alphanumeric", "EXAMPLE1", 1),
                 new Token("alphanumeric", "EXAMPLE2", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -28,13 +28,13 @@ public class SMLAScanner_Test {
     // Test 'Where vacant is vacant'
     @Test
     public void testVacant() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input2.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input2.txt");
         Token[] expectedTokens = {
                 new Token("vacant", "WHERE VACANT IS", 1),
                 new Token("alphanumeric", "VACANT", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -46,13 +46,13 @@ public class SMLAScanner_Test {
     // Test 'Variable'
     @Test
     public void testVariable() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input1.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input1.txt");
         Token[] expectedTokens = {
                 new Token("variable", "PREF1", "", "", 1),
                 new Token("n_integer", "10", "", "", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -64,7 +64,7 @@ public class SMLAScanner_Test {
     // Test 'Run simulation Example1 for 50 ticks'
     @Test
     public void testRun() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input3.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input3.txt");
         Token[] expectedTokens = {
                 new Token("run", "RUN SIMULATION", 1),
                 new Token("alphanumeric", "EXAMPLE1", 1),
@@ -73,7 +73,7 @@ public class SMLAScanner_Test {
                 new Token("phrase", "TICKS", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -85,14 +85,14 @@ public class SMLAScanner_Test {
     // Test 'Using random move'
     @Test
     public void testUsing() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input4.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input4.txt");
         Token[] expectedTokens = {
                 new Token("using", "USING", 1),
                 new Token("typeMoving", "RANDOM", 1),
                 new Token("phrase", "MOVE", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -104,7 +104,7 @@ public class SMLAScanner_Test {
     // Test 'Setup simulation(Example1) with 4 as (Group1, Group2, Group3, ABC)'
     @Test
     public void testSetup() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input5.txt");
+       tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input5.txt");
         Token[] expectedTokens = {
                 new Token("simulation", "SETUP SIMULATION", 1),
                 new Token("alphanumeric", "EXAMPLE1", 1),
@@ -117,7 +117,7 @@ public class SMLAScanner_Test {
                 new Token("alphanumeric", "ABC", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -129,7 +129,7 @@ public class SMLAScanner_Test {
     // Test 'Where pref is (10, 20, 30, 40)'
     @Test
     public void testPref() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input6.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input6.txt");
         Token[] expectedTokens = {
                 new Token("pref", "WHERE PREF IS", 1),
                 new Token("n_integer", "10", 1),
@@ -138,7 +138,7 @@ public class SMLAScanner_Test {
                 new Token("n_integer", "40", 1),
                 new Token("end_command", "end of command", 1)
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -150,7 +150,7 @@ public class SMLAScanner_Test {
     // Test all commands
     @Test
     public void testAllCommands() throws Exception {
-        SMLAScanner smlaScanner = tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input8.txt");
+        tokenizeInputFromFile("C:\\Users\\HAI\\OneDrive\\Desktop\\TestScan\\input8.txt");
         Token[] expectedTokens = {
                 // pref1 = 10
                 new Token("variable", "PREF1", "", "", 1),
@@ -201,7 +201,7 @@ public class SMLAScanner_Test {
                 new Token("end_command", "end of command", 8)
 
         };
-        Token[] actualTokens = smlaScanner.getTokenList().toArray(new Token[0]);
+        Token[] actualTokens = SMLAScanner.getTokenList().toArray(new Token[0]);
         assertEquals(expectedTokens.length, actualTokens.length);
         for (int i = 0; i < expectedTokens.length; i++) {
             assertEquals(expectedTokens[i].getType(), actualTokens[i].getType());
@@ -211,7 +211,7 @@ public class SMLAScanner_Test {
     }
 
     // Read file .txt
-    public SMLAScanner tokenizeInputFromFile(String filePath) throws Exception {
+    public void tokenizeInputFromFile(String filePath) throws Exception {
         File inputFile = new File(filePath);
         if (!inputFile.exists()) {
             throw new Exception("Input file does not exist.");
@@ -220,7 +220,7 @@ public class SMLAScanner_Test {
             throw new Exception("File is empty");
         }
         Scanner scanner = new Scanner(inputFile);
-        SMLAScanner smlaScanner = new SMLAScanner(scanner);
+        SMLAScanner smlaScanner = new SMLAScanner();
         StringBuilder input = new StringBuilder();
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
@@ -231,7 +231,6 @@ public class SMLAScanner_Test {
             input.append(upperLine).append("\n");
         }
         smlaScanner.tokenizeInput(input.toString());
-        return smlaScanner;
     }
 }
 

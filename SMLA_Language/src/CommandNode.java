@@ -8,7 +8,7 @@ public abstract class CommandNode {
         private String identifier;
         private int nInteger;
         private List<String> nFloats;
-        private List<CommandNode> children = new ArrayList<>();
+        private final List<CommandNode> children = new ArrayList<>();
 
         public void setKeyword(String keyword) {
             this.keyword = keyword;
@@ -53,10 +53,7 @@ public abstract class CommandNode {
 
     // Variable node
     static class VariableCommandNode extends CommandNode {
-        private String identifier;
-        private int nInteger;
         private List<String> identifiers;
-        private List<CommandNode> children;
 
         public List<String> getIdentifiers() {
             return identifiers;
@@ -67,7 +64,6 @@ public abstract class CommandNode {
         }
 
         public VariableCommandNode() {
-            children = new ArrayList<>();
         }
 
         @Override
@@ -83,7 +79,6 @@ public abstract class CommandNode {
     // Pref node
     static class PrefCommandNode extends CommandNode {
         private String keyword;
-        private String identifier;
 
         private List<String> nFloats;
 
@@ -219,9 +214,7 @@ public abstract class CommandNode {
     // Report node
     static class ReportCommandNode extends CommandNode {
         private String keyword;
-        private String identifier;
         private List<String> identifiers;
-        private List<CommandNode> children = new ArrayList<>();
 
         public void setKeyword(String keyword) {
             this.keyword = keyword;
@@ -237,10 +230,6 @@ public abstract class CommandNode {
 
         public List<String> getIdentifiers() {
             return identifiers;
-        }
-
-        public void setIdentifier(String identifier) {
-            this.identifier = identifier;
         }
 
         @Override

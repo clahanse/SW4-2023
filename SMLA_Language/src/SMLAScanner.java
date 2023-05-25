@@ -4,13 +4,11 @@ import java.util.Scanner;
 import java.util.regex.Pattern;
 
 public class SMLAScanner {
-    private Scanner scanner;
     private static List<Token> tokenList;
     int lineNum = 1;
 
-    public SMLAScanner(Scanner scanner) { // constructor
-        this.scanner = scanner;
-        this.tokenList = new ArrayList<>(); // list stores tokens
+    public SMLAScanner() { // constructor
+        tokenList = new ArrayList<>(); // list stores tokens
     }
 
     // MAIN FUNCTION SCANNING AND DIVIDING INPUT DATA INTO TOKENS
@@ -18,7 +16,7 @@ public class SMLAScanner {
         Scanner inputScanner = new Scanner(input);  // scan input string
         // split the input string into lines
         inputScanner.useDelimiter(Pattern.compile("[\r\n]+"));
-        String nextToken = ""; // store the next token
+        String nextToken; // store the next token
 
         while (inputScanner.hasNext()) { // process each line in the input string one by one
             String line = inputScanner.next();
@@ -29,6 +27,9 @@ public class SMLAScanner {
             }
             while (lineScanner.hasNext()) {  // process each token in the line one by one
                 String token = lineScanner.next();
+                if (!isAlphanumeric(token)) {
+                    throw new Exception("Invalid input, expected: 'alphanumeric'");
+                }
                 switch (token) {
                     case "SETUP" -> scanSetupRunReport(lineScanner, token); // scan "SETUP SIMULATION..."
                     case "WHERE" -> {
@@ -62,52 +63,55 @@ public class SMLAScanner {
     public void scanSetupRunReport(Scanner inputScanner, String token) throws Exception {
         String val = String.valueOf(token); // store token value
         if (!inputScanner.hasNext()) {
-            throw new Exception("\nError on line " + lineNum + " 'command' is missing word");
+            throw new Exception("\nError on line " + lineNum + " 'Missing word for keyword'");
         }
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             if (nextToken.equals("SIMULATION")) { // check "SIMULATION"
                 if (val.equals("SETUP")) {
                     val += " " + nextToken;
-                    addUniqueToken(tokenList, "simulation", val, lineNum); // save token "SETUP SIMULATION..."
+                    addUniqueToken(tokenList, "simulation", val); // save token "SETUP SIMULATION..."
                 }
                 if (val.equals("RUN")) {
                     val += " " + nextToken;
-                    addUniqueToken(tokenList, "run", val, lineNum); // save token "RUN SIMULATION..."
+                    addUniqueToken(tokenList, "run", val); // save token "RUN SIMULATION..."
                 }
                 if (val.equals("REPORT")) {
                     val += " " + nextToken;
-                    addUniqueToken(tokenList, "report", val, lineNum); // save token "REPORT SIMULATION..."
+                    addUniqueToken(tokenList, "report", val); // save token "REPORT SIMULATION..."
                 }
             } else {
                 throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
                         + ", expected: simulation");
             }
-            scanNextToken(inputScanner, nextToken);
+            scanNextToken(inputScanner);
         }
     }
 
     // SCAN WHERE PREF AND WHERE VACANT COMMANDS
     public void scanWhere(Scanner inputScanner, String token) throws Exception {
-        String val = "WHERE" + " " + String.valueOf(token);
+        String val = "WHERE" + " " + token;
+        if (!inputScanner.hasNext()) {
+            throw new Exception("\nError on line " + lineNum + " 'Missing word for keyword'");
+        }
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             if (nextToken.equals("IS")) { // check "IS"
                 switch (val) {
                     case "WHERE PREF" -> {
                         val += " " + nextToken;
-                        addUniqueToken(tokenList, "pref", val, lineNum);  // save token "WHERE PREF IS..."
+                        addUniqueToken(tokenList, "pref", val);  // save token "WHERE PREF IS..."
                     }
                     case "WHERE VACANT" -> {
                         val += " " + nextToken;
-                        addUniqueToken(tokenList, "vacant", val, lineNum); // save token "WHERE VACANT IS..."
+                        addUniqueToken(tokenList, "vacant", val); // save token "WHERE VACANT IS..."
                     }
                 }
             } else {
                 throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
-                        + ", expected: is" );
+                        + ", expected: is");
             }
-            scanNextToken(inputScanner, nextToken);
+            scanNextToken(inputScanner);
         }
     }
 
@@ -120,22 +124,21 @@ public class SMLAScanner {
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             if (val.equals("USING")) {
-                addUniqueToken(tokenList, "using", val, lineNum);
+                addUniqueToken(tokenList, "using", val);
             }
             if (nextToken.equals("RANDOM") || nextToken.equals("SCHELLING")) {
-                addUniqueToken(tokenList, "typeMoving", nextToken, lineNum);
+                addUniqueToken(tokenList, "typeMoving", nextToken);
             } else {
-                addUniqueToken(tokenList, "alphanumeric", nextToken, lineNum);
+                addUniqueToken(tokenList, "alphanumeric", nextToken);
             }
-            scanNextToken(inputScanner, nextToken);
+            scanNextToken(inputScanner);
         }
     }
 
     // SCAN VARIABLE COMMAND
     public void scanVariable(Scanner inputScanner, String token) throws Exception {
         String val = extractString(token);
-        if (isAlphanumeric(val) && !val.equals("setup") && !val.equals("where") &&
-                !val.equals("run") && !val.equals("using") && !val.equals("report")) {
+        if (isAlphanumeric(val)) {
             if (!inputScanner.hasNext()) {
                 throw new Exception("\nError on line " + lineNum + " Missing equal '='");
             }
@@ -146,33 +149,33 @@ public class SMLAScanner {
             if (!inputScanner.hasNext()) {
                 throw new Exception("\nError on line " + lineNum + " Missing value of variable");
             }
-            addUniqueToken(tokenList, "variable", val, lineNum);
-            scanNextToken(inputScanner, nextToken);
+            addUniqueToken(tokenList, "variable", val);
+            scanNextToken(inputScanner);
         }
     }
 
     // SCAN NEXT TOKEN
-    public void scanNextToken(Scanner inputScanner, String token) throws Exception {
+    public void scanNextToken(Scanner inputScanner) throws Exception {
         while (inputScanner.hasNext()) { // scan each token
             String nextToken = inputScanner.next();
             String exactSt = extractString(nextToken);
             if (isInteger(exactSt)) {
-                addUniqueToken(tokenList, "n_integer", exactSt, lineNum);
+                addUniqueToken(tokenList, "n_integer", exactSt);
             } else if (SMLAParser.isFloat(exactSt)) {
-                addUniqueToken(tokenList, "n_float", exactSt, lineNum);
+                addUniqueToken(tokenList, "n_float", exactSt);
             } else if (isAlphanumeric(exactSt)) {
                 if (exactSt.equals("WITH") || exactSt.equals("GROUPS") || exactSt.equals("TICKS")
                         || exactSt.equals("FOR") || exactSt.equals("MOVE") || exactSt.equals("AS")) {
-                    addUniqueToken(tokenList, "phrase", nextToken, lineNum);
+                    addUniqueToken(tokenList, "phrase", nextToken);
                 } else {
-                    addUniqueToken(tokenList, "alphanumeric", exactSt, lineNum);
+                    addUniqueToken(tokenList, "alphanumeric", exactSt);
                 }
             } else if (nextToken.equals("=")) {
-                addUniqueToken(tokenList, "assignmentOperator", nextToken, lineNum);
+                addUniqueToken(tokenList, "assignmentOperator", nextToken);
             } else if (nextToken.equals("+") || nextToken.equals("-")) {
-                addUniqueToken(tokenList, "addOperator", nextToken, lineNum);
+                addUniqueToken(tokenList, "addOperator", nextToken);
             } else if (nextToken.equals("*") || nextToken.equals("/")) {
-                addUniqueToken(tokenList, "multiOperator", nextToken, lineNum);
+                addUniqueToken(tokenList, "multiOperator", nextToken);
             } else {
                 throw new Exception("\nInvalid command on line " + lineNum + ", unexpected: " + nextToken
                         + ", expected: number, alphanumeric or operators (+, -, *, /)");
@@ -181,7 +184,7 @@ public class SMLAScanner {
     }
 
     // ADD EACH TOKEN INTO THE LIST
-    public void addUniqueToken(List<Token> tokenList, String typ, String val, int lineNumber) {
+    public void addUniqueToken(List<Token> tokenList, String typ, String val) {
         tokenList.add(new Token(typ, val, lineNum));
     }
 
@@ -192,7 +195,7 @@ public class SMLAScanner {
     // GET EXACTLY STRING
     public static String extractString(String input) {
         // Define the regular expression pattern
-        Pattern pattern = Pattern.compile("^[#(\"\']|[:,),\"\']$");
+        Pattern pattern = Pattern.compile("^[#(\"']|[:,)\"']$");
         input = pattern.matcher(input).replaceAll("");
         return input;
     }
@@ -204,6 +207,21 @@ public class SMLAScanner {
             return true;
         } catch (NumberFormatException e) {
             return false;
+        }
+    }
+
+    // PRINT TOKEN LIST
+    public void printTokens(List<Token> tokens) {
+        int i = 1;
+        for (Token token : tokens) {
+            if (token.getType().equals("variable")) {
+                System.out.println(i + "-type: " + token.getType() + ", value: " + token.getValue()
+                        + ", variable value: " + token.getVariableValue() + ", line: " + token.getLineNumber());
+            } else {
+                System.out.println(i + "-type: " + token.getType() + ", value: " + token.getValue() +
+                        ", line: " + token.getLineNumber());
+            }
+            i++;
         }
     }
 
@@ -225,10 +243,10 @@ public class SMLAScanner {
     public static void main(String[] args) throws Exception {
         // read input from console
         Scanner scanner = new Scanner(System.in);
-        SMLAScanner smlaScanner = new SMLAScanner(scanner);
-
+        SMLAScanner smlaScanner = new SMLAScanner();
         boolean continueScanning = true;
         StringBuilder input = new StringBuilder();
+
         System.out.println("\nEnter your commands (type 'run' to execute):");
         while (continueScanning) {
             getTokenList().clear();
@@ -242,44 +260,9 @@ public class SMLAScanner {
         }
         getTokenList().clear(); // reset the TokenList before scanning new input
         smlaScanner.tokenizeInput(input.toString());
-
-        // read input from file
-     /*  File inputFile = new File("C:\\Users\\HAI\\OneDrive\\Desktop\\input.txt");
-        if (!inputFile.exists()) {
-            throw new Exception("Input file does not exist.");
-        }
-        if (inputFile.length() == 0) {
-            throw new Exception("File is empty");
-        }
-        Scanner scanner = new Scanner(inputFile);
-        SMLAScanner smlaScanner = new SMLAScanner(scanner);
-        //  List<Token> tokens = new ArrayList<>();
-        List<Token> tokensParser = new ArrayList<>();
-        StringBuilder input = new StringBuilder();
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine();
-            if (line.isBlank()) {
-                continue; // Skip blank lines
-            }
-            String UpperLine = toUpperCase(line);
-            input.append(UpperLine).append("\n");
-        }
-        // tokenize input using scanner
-        smlaScanner.tokenizeInput(input.toString());*/
-
-        System.out.println("\nPrint Token from List: ");
-        int i = 1;
-        for (Token token : getTokenList()) {
-            // tokens.add(token);
-            if (token.getType().equals("variable")) {
-                System.out.println(i + "-type: " + token.getType() + ", value: " +
-                        token.getValue() + ", variable value: " + token.getVariableValue() + ", line: " + token.getLineNumber());
-            } else {
-                System.out.println(i + "-type: " + token.getType() + ", value: " + token.getValue() +
-                        ", line: " + token.getLineNumber());
-            }
-            i++;
-        }
+        System.out.println("\n*** Print token list: ");
+        smlaScanner.printTokens(getTokenList());
+        System.out.println("*** End of the list - Scanner successful");
     }
 }
 
